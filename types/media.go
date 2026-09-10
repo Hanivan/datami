@@ -47,6 +47,14 @@ type Relation struct {
 	TargetSource string
 	TargetType   string
 	Kind         RelationKind
+	// TargetMalID is the target's MAL id when the source knows it ("" otherwise).
+	// AniList carries idMal on relation nodes; consumers that fetch the target
+	// from MAL need it, since TargetID is the AniList id on AniList relations.
+	TargetMalID string
+	// TargetFormat is the source's verbatim format string ("NOVEL", "TV", ...)
+	// when supplied. It separates a light novel from a manga, which TargetType
+	// alone ("MANGA" on AniList) cannot.
+	TargetFormat string
 }
 
 // Media is the canonical, source-independent response shape. It carries every

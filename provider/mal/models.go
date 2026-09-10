@@ -115,6 +115,12 @@ type relatedEntry struct {
 type animeRelation struct {
 	ID    int    `json:"id"`
 	Title string `json:"title"`
+	// MediaType is MAL's verbatim node media_type ("tv"/"ova"/"movie"/"manga"/
+	// "light_novel"/...). Only returned when the request asks for it via the
+	// nested field selector related_anime{media_type}; consumers classify the
+	// relation target from it, so a bare related_anime request makes every
+	// target indistinguishable.
+	MediaType string `json:"media_type,omitempty"`
 }
 
 type manga struct {

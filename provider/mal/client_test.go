@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -283,5 +284,52 @@ func TestGetPerson(t *testing.T) {
 	}
 	if p.Birthday != "1941-01-05" {
 		t.Fatalf("birthday mismatch: %s", p.Birthday)
+	}
+}
+
+// TestRelationTargetTypeIsNodeMediaType pins the two halves of the relation
+// contract: the request asks for the nested media_type selector, and the
+// mapping carries that verbatim node media_type onto TargetType. A bare
+// related_anime request returns nodes without media_type, which would make
+// every anime target indistinguishable from a manga one downstream.
+func TestRelationTargetTypeIsNodeMediaType(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{
+			"id": 30831,
+			"title": "Konosuba",
+			"media_type": "tv",
+			"status": "finished_airing",
+			"related_anime": [
+				{"node": {"id": 32380, "title": "S2", "media_type": "tv"}, "relation_type": "sequel"},
+				{"node": {"id": 51958, "title": "OVA", "media_type": "ova"}, "relation_type": "side_story"}
+			],
+			"related_manga": [
+				{"node": {"id": 32937, "title": "Note", "media_type": "manga"}, "relation_type": "other"},
+				{"node": {"id": 44286, "title": "LN", "media_type": "light_novel"}, "relation_type": "source"},
+				{"node": {"id": 77, "title": "NoType"}, "relation_type": "other"}
+			]
+		}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{ClientID: "test", Timeout: 5 * time.Second})
+	m, err := c.Get(context.Background(), "30831")
+	if err != nil {
+		t.Fatalf("Get failed: %v", err)
+	}
+	if !strings.Contains(gotQuery, "related_anime{media_type}") || !strings.Contains(gotQuery, "related_manga{media_type}") {
+		t.Fatalf("request must select nested media_type, got query %q", gotQuery)
+	}
+	want := map[string]string{"32380": "tv", "51958": "ova", "32937": "manga", "44286": "light_novel", "77": "manga"}
+	if len(m.Relations) != len(want) {
+		t.Fatalf("expected %d relations, got %d", len(want), len(m.Relations))
+	}
+	for _, rel := range m.Relations {
+		if w, ok := want[rel.TargetID]; !ok || rel.TargetType != w {
+			t.Fatalf("relation %s: TargetType = %q, want %q", rel.TargetID, rel.TargetType, w)
+		}
 	}
 }

@@ -37,7 +37,7 @@ func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGet, Err: types.ErrInvalidInput}
 	}
-	u := fmt.Sprintf("%s/anime/%s?fields=id,title,main_picture,synopsis,start_date,end_date,status,media_type,num_episodes,average_episode_duration,mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,genres,studios,alternative_titles,related_anime,related_manga,start_season,broadcast,source,rating,pictures,background,recommendations,statistics,my_list_status,created_at,updated_at", c.baseURL, url.PathEscape(id))
+	u := fmt.Sprintf("%s/anime/%s?fields=id,title,main_picture,synopsis,start_date,end_date,status,media_type,num_episodes,average_episode_duration,mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,genres,studios,alternative_titles,related_anime{media_type},related_manga{media_type},start_season,broadcast,source,rating,pictures,background,recommendations,statistics,my_list_status,created_at,updated_at", c.baseURL, url.PathEscape(id))
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGet, Err: err}
@@ -69,7 +69,7 @@ func (c *Client) GetManga(ctx context.Context, id string) (*types.Media, error) 
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetManga, Err: types.ErrInvalidInput}
 	}
-	u := fmt.Sprintf("%s/manga/%s?fields=id,title,main_picture,synopsis,start_date,end_date,status,media_type,num_chapters,num_volumes,mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,genres,alternative_titles,related_manga,related_anime,authors,serialization,pictures,background,recommendations,statistics,my_list_status,created_at,updated_at", c.baseURL, url.PathEscape(id))
+	u := fmt.Sprintf("%s/manga/%s?fields=id,title,main_picture,synopsis,start_date,end_date,status,media_type,num_chapters,num_volumes,mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,genres,alternative_titles,related_manga{media_type},related_anime{media_type},authors,serialization,pictures,background,recommendations,statistics,my_list_status,created_at,updated_at", c.baseURL, url.PathEscape(id))
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetManga, Err: err}

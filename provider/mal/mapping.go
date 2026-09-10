@@ -9,6 +9,25 @@ import (
 	"github.com/Hanivan/datami/types"
 )
 
+// relationTarget builds one relation edge. TargetType is the node's VERBATIM
+// MAL media_type ("tv"/"ova"/"light_novel"/...) when the request asked for it
+// (related_anime{media_type}); it falls back to fallback ("anime"/"manga", the
+// list the entry came from) when MAL omitted it. Consumers classify the target
+// medium from this string, so the specific media_type matters: a light_novel
+// listed under related_manga is not a manga.
+func relationTarget(r relatedEntry, fallback types.ResourceType) types.Relation {
+	targetType := r.Node.MediaType
+	if targetType == "" {
+		targetType = string(fallback)
+	}
+	return types.Relation{
+		TargetID:     strconv.Itoa(r.Node.ID),
+		TargetSource: types.SourceMAL,
+		TargetType:   targetType,
+		Kind:         types.RelationKind(helpers.NormalizeRelation(r.RelationType)),
+	}
+}
+
 func (a anime) toMedia() *types.Media {
 	m := &types.Media{
 		Synopsis:        a.Synopsis,
@@ -68,21 +87,11 @@ func (a anime) toMedia() *types.Media {
 	}
 
 	for _, r := range a.RelatedAnime {
-		m.Relations = append(m.Relations, types.Relation{
-			TargetID:     strconv.Itoa(r.Node.ID),
-			TargetSource: types.SourceMAL,
-			TargetType:   string(types.ResourceAnime),
-			Kind:         types.RelationKind(helpers.NormalizeRelation(r.RelationType)),
-		})
+		m.Relations = append(m.Relations, relationTarget(r, types.ResourceAnime))
 	}
 
 	for _, r := range a.RelatedManga {
-		m.Relations = append(m.Relations, types.Relation{
-			TargetID:     strconv.Itoa(r.Node.ID),
-			TargetSource: types.SourceMAL,
-			TargetType:   string(types.ResourceManga),
-			Kind:         types.RelationKind(helpers.NormalizeRelation(r.RelationType)),
-		})
+		m.Relations = append(m.Relations, relationTarget(r, types.ResourceManga))
 	}
 
 	m.StartDate = helpers.ParseDate(a.StartDate)
@@ -207,21 +216,11 @@ func (m manga) toMedia() *types.Media {
 	}
 
 	for _, r := range m.RelatedManga {
-		media.Relations = append(media.Relations, types.Relation{
-			TargetID:     strconv.Itoa(r.Node.ID),
-			TargetSource: types.SourceMAL,
-			TargetType:   string(types.ResourceManga),
-			Kind:         types.RelationKind(helpers.NormalizeRelation(r.RelationType)),
-		})
+		media.Relations = append(media.Relations, relationTarget(r, types.ResourceManga))
 	}
 
 	for _, r := range m.RelatedAnime {
-		media.Relations = append(media.Relations, types.Relation{
-			TargetID:     strconv.Itoa(r.Node.ID),
-			TargetSource: types.SourceMAL,
-			TargetType:   string(types.ResourceAnime),
-			Kind:         types.RelationKind(helpers.NormalizeRelation(r.RelationType)),
-		})
+		media.Relations = append(media.Relations, relationTarget(r, types.ResourceAnime))
 	}
 
 	media.StartDate = helpers.ParseDate(m.StartDate)

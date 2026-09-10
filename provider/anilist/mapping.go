@@ -71,12 +71,19 @@ func (m media) toMedia() *types.Media {
 			if e.Node.Type != nil {
 				kind = types.ResourceType(strings.ToLower(*e.Node.Type))
 			}
-			result.Relations = append(result.Relations, types.Relation{
+			rel := types.Relation{
 				TargetID:     strconv.Itoa(e.Node.ID),
 				TargetSource: types.SourceAniList,
 				TargetType:   string(kind),
 				Kind:         types.RelationKind(helpers.NormalizeRelation(e.RelationType)),
-			})
+			}
+			if e.Node.IDMal != nil {
+				rel.TargetMalID = strconv.Itoa(*e.Node.IDMal)
+			}
+			if e.Node.Format != nil {
+				rel.TargetFormat = *e.Node.Format
+			}
+			result.Relations = append(result.Relations, rel)
 		}
 	}
 
