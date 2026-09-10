@@ -3,7 +3,7 @@
 Go 1.27 library - unified anime/manga metadata client across multiple sources.
 
 ```
-go get github.com/linkeunid/datami
+go get github.com/Hanivan/datami
 ```
 
 ## Quick start

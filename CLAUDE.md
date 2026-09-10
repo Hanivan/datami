@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`datami` - Go 1.27 library providing a unified client for anime/manga metadata across multiple sources: MyAnimeList (MAL), AniList, AniDB, Kitsu. Module path: `github.com/linkeunid/datami`.
+`datami` - Go 1.27 library providing a unified client for anime/manga metadata across multiple sources: MyAnimeList (MAL), AniList, AniDB, Kitsu. Module path: `github.com/Hanivan/datami`.
 
 ## Commands
 
