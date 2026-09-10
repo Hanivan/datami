@@ -333,3 +333,47 @@ func TestRelationTargetTypeIsNodeMediaType(t *testing.T) {
 		}
 	}
 }
+
+// TestAnimeCharactersRosterIsHydrated pins that the roster request asks for
+// every field the per-character detail endpoint would supply, and that the
+// mapping carries them. The roster being hydrated is what lets a consumer
+// skip an N+1 detail fetch per character.
+func TestAnimeCharactersRosterIsHydrated(t *testing.T) {
+	var gotQuery string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.RawQuery
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":[{"node":{"id":40,"first_name":"Monkey","last_name":"Luffy","alternative_name":"Straw Hat","main_picture":{"medium":"m.jpg","large":"l.jpg"},"num_favorites":14477,"biography":"Captain."},"role":"Main"}]}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{ClientID: "test", Timeout: 5 * time.Second})
+	chars, err := c.GetAnimeCharacters(context.Background(), "21")
+	if err != nil {
+		t.Fatalf("GetAnimeCharacters failed: %v", err)
+	}
+	for _, f := range []string{"first_name", "last_name", "alternative_name", "main_picture", "num_favorites"} {
+		if !strings.Contains(gotQuery, f) {
+			t.Fatalf("roster must request %s, got %q", f, gotQuery)
+		}
+	}
+	if len(chars) != 1 {
+		t.Fatalf("expected 1 character, got %d", len(chars))
+	}
+	got := chars[0]
+	if got.FirstName != "Monkey" || got.LastName != "Luffy" {
+		t.Fatalf("name parts lost: %+v", got)
+	}
+	if len(got.AlternativeName) != 1 || got.AlternativeName[0] != "Straw Hat" {
+		t.Fatalf("alternative name lost: %+v", got.AlternativeName)
+	}
+	if got.Image != "m.jpg" || got.ImageLarge != "l.jpg" {
+		t.Fatalf("image sizes lost: %q / %q", got.Image, got.ImageLarge)
+	}
+	if got.NumFavorites == nil || *got.NumFavorites != 14477 {
+		t.Fatalf("num_favorites lost: %v", got.NumFavorites)
+	}
+	if len(got.Roles) != 1 || string(got.Roles[0].Role) != "main" {
+		t.Fatalf("role lost: %+v", got.Roles)
+	}
+}

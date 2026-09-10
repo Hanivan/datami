@@ -55,6 +55,9 @@ type Relation struct {
 	// when supplied. It separates a light novel from a manga, which TargetType
 	// alone ("MANGA" on AniList) cannot.
 	TargetFormat string
+	// TargetTitle is the target's display title. Display only — never an
+	// identity key, since the same work carries different titles per source.
+	TargetTitle string
 }
 
 // Media is the canonical, source-independent response shape. It carries every

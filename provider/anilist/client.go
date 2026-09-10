@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -51,12 +52,16 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	return c.doSearchGraphQL(ctx, gql, vars)
 }
 
+// GetByMalID fetches the ANIME whose MAL id is malID. The type filter is not
+// optional: MAL anime and manga ids are separate namespaces, so an unfiltered
+// idMal lookup can resolve to the manga that happens to share the number. Use
+// GetMangaByMalID for the manga namespace.
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
 	if malID == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetByMalID, Err: types.ErrInvalidInput}
 	}
-	query := `query ($malId: Int) { Media(idMal: $malId) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format episodes duration chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings stats } }`
-	vars := map[string]any{"malId": parseID(malID)}
+	query := `query ($malId: Int, $type: MediaType) { Media(idMal: $malId, type: $type) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format episodes duration chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings stats } }`
+	vars := map[string]any{"malId": parseID(malID), "type": "ANIME"}
 	return c.doGraphQL(ctx, query, vars, OpGetByMalID)
 }
 
@@ -180,16 +185,29 @@ func (c *Client) DeleteMediaListEntry(ctx context.Context, listEntryID int) erro
 // GetCharacters returns the character edges of a media by AniList id,
 // walking pages (AniList caps at 25 per page).
 func (c *Client) GetCharacters(ctx context.Context, id string) ([]types.Character, error) {
+	return c.charactersBy(ctx, "id", id, "")
+}
+
+// GetCharactersByMalID returns the character edges of a media addressed by its
+// MAL id. AniList ids and MAL ids are SEPARATE namespaces, so passing a MAL id
+// to GetCharacters resolves to an unrelated media (or none) — a caller holding
+// a MAL id must use this. mediaType ("ANIME"/"MANGA") disambiguates, since one
+// MAL id can exist in both namespaces; "" queries without the type filter.
+func (c *Client) GetCharactersByMalID(ctx context.Context, malID, mediaType string) ([]types.Character, error) {
+	return c.charactersBy(ctx, "idMal", malID, mediaType)
+}
+
+func (c *Client) charactersBy(ctx context.Context, idField, id, mediaType string) ([]types.Character, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: types.ErrInvalidInput}
 	}
+	sel := `characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } description } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
+	query, vars := mediaPageQuery(idField, id, mediaType, sel)
 	var all []characterEdge
-	vars := map[string]any{"id": parseID(id)}
 	for page := 1; page <= 10; page++ {
 		pageVars := copyVars(vars)
 		pageVars["page"] = page
 		pageVars["perPage"] = 25
-		query := `query ($id: Int, $page: Int, $perPage: Int) { Media(id: $id) { characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } description } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } } } } }`
 		conn, err := c.doCharConn(ctx, query, pageVars, OpGetCharacters)
 		if err != nil {
 			return nil, err
@@ -211,16 +229,26 @@ func (c *Client) GetCharacters(ctx context.Context, id string) ([]types.Characte
 
 // GetStaff returns the staff edges of a media by AniList id.
 func (c *Client) GetStaff(ctx context.Context, id string) ([]types.Person, error) {
+	return c.staffBy(ctx, "id", id, "")
+}
+
+// GetStaffByMalID returns the staff edges of a media addressed by its MAL id.
+// See GetCharactersByMalID on why the id namespace matters.
+func (c *Client) GetStaffByMalID(ctx context.Context, malID, mediaType string) ([]types.Person, error) {
+	return c.staffBy(ctx, "idMal", malID, mediaType)
+}
+
+func (c *Client) staffBy(ctx context.Context, idField, id, mediaType string) ([]types.Person, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: types.ErrInvalidInput}
 	}
+	sel := `staff(page: $page, perPage: $perPage, sort: RELEVANCE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } primaryOccupations } } }`
+	query, vars := mediaPageQuery(idField, id, mediaType, sel)
 	var all []staffEdge
-	vars := map[string]any{"id": parseID(id)}
 	for page := 1; page <= 10; page++ {
 		pageVars := copyVars(vars)
 		pageVars["page"] = page
 		pageVars["perPage"] = 25
-		query := `query ($id: Int, $page: Int, $perPage: Int) { Media(id: $id) { staff(page: $page, perPage: $perPage, sort: RELEVANCE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } primaryOccupations } } } } }`
 		conn, err := c.doStaffConn(ctx, query, pageVars, OpGetStaff)
 		if err != nil {
 			return nil, err
@@ -238,6 +266,21 @@ func (c *Client) GetStaff(ctx context.Context, id string) ([]types.Person, error
 		out = append(out, *e.toPerson())
 	}
 	return out, nil
+}
+
+// mediaPageQuery builds a paginated `Media(<idField>: $<idField>[, type: $type])`
+// query around sel, plus its variables. idField is "id" (AniList) or "idMal";
+// mediaType "" omits the type filter.
+func mediaPageQuery(idField, id, mediaType, sel string) (string, map[string]any) {
+	vars := map[string]any{idField: parseID(id)}
+	args := "$" + idField + ": Int, $page: Int, $perPage: Int"
+	mediaArgs := idField + ": $" + idField
+	if mediaType != "" {
+		args += ", $type: MediaType"
+		mediaArgs += ", type: $type"
+		vars["type"] = mediaType
+	}
+	return "query (" + args + ") { Media(" + mediaArgs + ") { " + sel + " } }", vars
 }
 
 // TagsLinks holds a media's tags + external links from one fetch.
@@ -266,13 +309,39 @@ type ExternalLink struct {
 	IsDisabled bool
 }
 
+// ErrMediaNotFound is returned by the tags/links fetches when AniList answers
+// a resolved, error-free {"data":{"Media":null}} — the id did not resolve to a
+// Media at all. Deliberately distinct from a nil error with empty slices,
+// which means the Media DID resolve and genuinely has none: a caller doing a
+// delete-then-insert refresh must tell the two apart, since "didn't resolve
+// this time" is not grounds to conclude the prior set is stale.
+var ErrMediaNotFound = errors.New("anilist: media not found")
+
 // GetTagsAndLinks returns a media's tags and external links by AniList id.
 func (c *Client) GetTagsAndLinks(ctx context.Context, id string) (*TagsLinks, error) {
+	return c.tagsLinksBy(ctx, "id", id, "")
+}
+
+// GetTagsAndLinksByMalID returns a media's tags and external links addressed by
+// its MAL id. See GetCharactersByMalID on why the id namespace matters.
+func (c *Client) GetTagsAndLinksByMalID(ctx context.Context, malID, mediaType string) (*TagsLinks, error) {
+	return c.tagsLinksBy(ctx, "idMal", malID, mediaType)
+}
+
+func (c *Client) tagsLinksBy(ctx context.Context, idField, id, mediaType string) (*TagsLinks, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: types.ErrInvalidInput}
 	}
-	query := `query ($id: Int) { Media(id: $id) { tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } externalLinks { id url site siteId type language notes isDisabled } } }`
-	vars := map[string]any{"id": parseID(id)}
+	sel := `tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } externalLinks { id url site siteId type language notes isDisabled }`
+	vars := map[string]any{idField: parseID(id)}
+	args := "$" + idField + ": Int"
+	mediaArgs := idField + ": $" + idField
+	if mediaType != "" {
+		args += ", $type: MediaType"
+		mediaArgs += ", type: $type"
+		vars["type"] = mediaType
+	}
+	query := "query (" + args + ") { Media(" + mediaArgs + ") { " + sel + " } }"
 	body, err := c.post(ctx, query, vars, OpGetTagsLinks)
 	if err != nil {
 		return nil, err
@@ -289,7 +358,7 @@ func (c *Client) GetTagsAndLinks(ctx context.Context, id string) (*TagsLinks, er
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: fmt.Errorf("decode: %w", err)}
 	}
 	if result.Data.Media == nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: types.ErrNotFound}
+		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: ErrMediaNotFound}
 	}
 	tl := &TagsLinks{}
 	for _, t := range result.Data.Media.Tags {

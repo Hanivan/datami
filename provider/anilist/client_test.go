@@ -2,6 +2,7 @@ package anilist
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -198,5 +199,105 @@ func TestRelationCarriesMalIDAndFormat(t *testing.T) {
 	}
 	if got := m.Relations[2]; got.TargetMalID != "" || got.TargetFormat != "" {
 		t.Fatalf("relation without idMal/format must stay empty: %+v", got)
+	}
+}
+
+// TestCharactersByMalIDUsesMalNamespace pins that the by-MAL fetches address
+// Media by idMal (+ an optional type filter), not by AniList id. The two id
+// spaces are unrelated, so querying id: <malID> silently returns a different
+// work — and that every character name part and voice actor survives the
+// mapping, since consumers persist them as separate columns.
+func TestCharactersByMalIDUsesMalNamespace(t *testing.T) {
+	var gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b := make([]byte, r.ContentLength)
+		r.Body.Read(b)
+		gotBody = string(b)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"Media":{"characters":{"pageInfo":{"hasNextPage":false},"edges":[
+			{"role":"MAIN","node":{"id":1,"name":{"first":"Monkey","last":"Luffy","full":"Monkey D. Luffy","native":"モンキー","alternative":["Straw Hat"]},"image":{"medium":"m.jpg","large":"l.jpg"},"description":"Captain."},
+			 "voiceActors":[{"id":9,"name":{"full":"Mayumi Tanaka","native":"田中真弓"},"image":{"medium":"vm.jpg","large":"vl.jpg"},"languageV2":"Japanese"}]}
+		]}}}}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second})
+	chars, err := c.GetCharactersByMalID(context.Background(), "21", "ANIME")
+	if err != nil {
+		t.Fatalf("GetCharactersByMalID failed: %v", err)
+	}
+	if !strings.Contains(gotBody, "idMal: $idMal") {
+		t.Fatalf("must address Media by idMal, got %q", gotBody)
+	}
+	if !strings.Contains(gotBody, "type: $type") {
+		t.Fatalf("mediaType must reach the query as a type filter, got %q", gotBody)
+	}
+	if len(chars) != 1 {
+		t.Fatalf("expected 1 character, got %d", len(chars))
+	}
+	got := chars[0]
+	if got.FirstName != "Monkey" || got.LastName != "Luffy" || got.NativeName != "モンキー" {
+		t.Fatalf("name parts lost: %+v", got)
+	}
+	if len(got.AlternativeName) != 1 || got.AlternativeName[0] != "Straw Hat" {
+		t.Fatalf("alternative names lost: %+v", got.AlternativeName)
+	}
+	if got.Image != "m.jpg" || got.ImageLarge != "l.jpg" {
+		t.Fatalf("image sizes lost: %q / %q", got.Image, got.ImageLarge)
+	}
+	if got.Biography != "Captain." || len(got.Names) != 1 || got.Names[0] != "Monkey D. Luffy" {
+		t.Fatalf("display name/biography mismatch: %+v", got)
+	}
+	if len(got.VoiceActors) != 1 {
+		t.Fatalf("expected 1 voice actor, got %d", len(got.VoiceActors))
+	}
+	va := got.VoiceActors[0]
+	if va.ID != "9" || va.Name != "Mayumi Tanaka" || va.Language != "Japanese" || va.Image != "vm.jpg" {
+		t.Fatalf("voice actor mismatch: %+v", va)
+	}
+}
+
+// TestStaffByMalIDCarriesRoleAndOccupations pins the staff parity fields the
+// consumer writes: the per-media credit role and AniList's occupation list.
+func TestStaffByMalIDCarriesRoleAndOccupations(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"Media":{"staff":{"pageInfo":{"hasNextPage":false},"edges":[
+			{"role":"Story","node":{"id":7,"name":{"full":"Natsuki Akatsuki","native":"暁なつめ"},"image":{"medium":"m.jpg","large":"l.jpg"},"primaryOccupations":["Novelist"]}}
+		]}}}}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second})
+	staff, err := c.GetStaffByMalID(context.Background(), "30831", "MANGA")
+	if err != nil {
+		t.Fatalf("GetStaffByMalID failed: %v", err)
+	}
+	if len(staff) != 1 {
+		t.Fatalf("expected 1 staff, got %d", len(staff))
+	}
+	p := staff[0]
+	if p.Role != "Story" || p.Name != "Natsuki Akatsuki" || p.NativeName != "暁なつめ" {
+		t.Fatalf("staff fields lost: %+v", p)
+	}
+	if len(p.PrimaryOccupations) != 1 || p.PrimaryOccupations[0] != "Novelist" {
+		t.Fatalf("primaryOccupations lost: %+v", p.PrimaryOccupations)
+	}
+}
+
+// TestTagsAndLinksNotFoundIsDistinct pins that an unresolved id yields
+// ErrMediaNotFound rather than an empty result: a caller refreshing tags by
+// delete-then-insert must not clear the prior set on a non-resolution.
+func TestTagsAndLinksNotFoundIsDistinct(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"Media":null}}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second})
+	_, err := c.GetTagsAndLinksByMalID(context.Background(), "999999", "ANIME")
+	if !errors.Is(err, ErrMediaNotFound) {
+		t.Fatalf("expected ErrMediaNotFound, got %v", err)
 	}
 }

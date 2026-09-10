@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 
 	"github.com/Hanivan/datami/internal/httpx"
 	"github.com/Hanivan/datami/types"
@@ -368,15 +367,7 @@ func handleCharacterResponse(code int, body []byte) (*types.Character, error) {
 		if err := json.Unmarshal(body, &c); err != nil {
 			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: fmt.Errorf("parse: %w", err)}
 		}
-		out := &types.Character{
-			ID:        strconv.Itoa(c.ID),
-			Names:     []string{c.FirstName + " " + c.LastName},
-			Biography: c.Biography,
-		}
-		if c.MainPicture != nil {
-			out.Image = c.MainPicture.Medium
-		}
-		return out, nil
+		return c.toCharacter(), nil
 	case http.StatusNotFound:
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrNotFound}
 	case http.StatusTooManyRequests:

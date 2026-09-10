@@ -75,6 +75,7 @@ func (m media) toMedia() *types.Media {
 				TargetID:     strconv.Itoa(e.Node.ID),
 				TargetSource: types.SourceAniList,
 				TargetType:   string(kind),
+				TargetTitle:  helpers.DerefString(e.Node.Title.Romaji),
 				Kind:         types.RelationKind(helpers.NormalizeRelation(e.RelationType)),
 			}
 			if e.Node.IDMal != nil {
@@ -147,8 +148,14 @@ func toDate(f *fuzzyDate) *types.Date {
 
 func (e characterEdge) toCharacter() *types.Character {
 	c := &types.Character{
-		ID:        strconv.Itoa(e.Node.ID),
-		Biography: helpers.DerefString(e.Node.Description),
+		ID:              strconv.Itoa(e.Node.ID),
+		Biography:       helpers.DerefString(e.Node.Description),
+		FirstName:       e.Node.Name.First,
+		LastName:        e.Node.Name.Last,
+		NativeName:      e.Node.Name.Native,
+		AlternativeName: e.Node.Name.Alternative,
+		Image:           e.Node.Image.Medium,
+		ImageLarge:      e.Node.Image.Large,
 		Roles: []types.CharacterRole{
 			{MediaID: "", Role: types.CharacterRoleType(strings.ToLower(e.Role))},
 		},
@@ -158,11 +165,22 @@ func (e characterEdge) toCharacter() *types.Character {
 		name = strings.TrimSpace(e.Node.Name.First + " " + e.Node.Name.Last)
 	}
 	c.Names = append(c.Names, name)
-	if e.Node.Image.Large != "" || e.Node.Image.Medium != "" {
+	if c.Image == "" {
 		c.Image = e.Node.Image.Large
-		if c.Image == "" {
-			c.Image = e.Node.Image.Medium
+	}
+	for _, va := range e.VoiceActors {
+		vaName := va.Name.Full
+		if vaName == "" {
+			vaName = va.Name.Native
 		}
+		c.VoiceActors = append(c.VoiceActors, types.VoiceActor{
+			ID:         strconv.Itoa(va.ID),
+			Name:       vaName,
+			NativeName: va.Name.Native,
+			Language:   va.LanguageV2,
+			Image:      va.Image.Medium,
+			ImageLarge: va.Image.Large,
+		})
 	}
 	return c
 }
@@ -177,8 +195,12 @@ func (e staffEdge) toPerson() *types.Person {
 		img = e.Node.Image.Medium
 	}
 	return &types.Person{
-		ID:    strconv.Itoa(e.Node.ID),
-		Name:  name,
-		Image: img,
+		ID:                 strconv.Itoa(e.Node.ID),
+		Name:               name,
+		NativeName:         e.Node.Name.Native,
+		Role:               e.Role,
+		Image:              img,
+		ImageLarge:         e.Node.Image.Large,
+		PrimaryOccupations: e.Node.PrimaryOccupations,
 	}
 }
