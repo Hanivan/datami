@@ -30,12 +30,14 @@ type Config struct {
 	Burst     int
 	Metrics   func(op string, dur time.Duration, err error)
 	Transport http.RoundTripper
+	Headers   map[string]string
 }
 
 type Client struct {
 	base    *http.Client
 	limiter *rate.Limiter
 	metrics func(op string, dur time.Duration, err error)
+	headers map[string]string
 }
 
 func New(cfg Config) *Client {
@@ -61,6 +63,7 @@ func New(cfg Config) *Client {
 		base:    base,
 		limiter: limiter,
 		metrics: cfg.Metrics,
+		headers: cfg.Headers,
 	}
 }
 
@@ -84,6 +87,9 @@ func (c *Client) Post(ctx context.Context, url string, body []byte, headers map[
 }
 
 func (c *Client) Do(req *http.Request) (int, []byte, error) {
+	for k, v := range c.headers {
+		req.Header.Set(k, v)
+	}
 	if c.limiter != nil {
 		if err := c.limiter.Wait(req.Context()); err != nil {
 			return 0, nil, fmt.Errorf("rate limiter: %w", err)

@@ -37,6 +37,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 		client: httpx.New(httpx.Config{
 			Timeout: timeout,
 			Rate:    2,
+			Headers: map[string]string{"X-MAL-CLIENT-ID": cfg.ClientID},
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
 					cfg.Metrics("mal", op, dur, err)

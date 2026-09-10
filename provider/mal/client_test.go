@@ -67,6 +67,9 @@ func TestGetAnime(t *testing.T) {
 
 func TestGetNotFound(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-MAL-CLIENT-ID"); got != "test" {
+			t.Errorf("expected X-MAL-CLIENT-ID=test, got %q", got)
+		}
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer srv.Close()
