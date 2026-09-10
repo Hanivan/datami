@@ -228,15 +228,18 @@ func (m manga) toMedia() *types.Media {
 	media.EndDate = helpers.ParseDate(m.EndDate)
 
 	for _, au := range m.Authors {
-		media.Authors = append(media.Authors, types.Author{
+		author := types.Author{
 			ID:           strconv.Itoa(au.Node.ID),
 			FirstName:    au.Node.FirstName,
 			LastName:     au.Node.LastName,
 			Role:         au.Role,
-			ImageMedium:  au.Node.MainPicture.Medium,
-			ImageLarge:   au.Node.MainPicture.Large,
 			NumFavorites: au.Node.NumFavorites,
-		})
+		}
+		if au.Node.MainPicture != nil {
+			author.ImageMedium = au.Node.MainPicture.Medium
+			author.ImageLarge = au.Node.MainPicture.Large
+		}
+		media.Authors = append(media.Authors, author)
 	}
 
 	for _, sg := range m.Serialization {
@@ -274,13 +277,16 @@ func (a animeCharacter) toCharacter() *types.Character {
 }
 
 func (p person) toPerson() *types.Person {
-	return &types.Person{
+	out := &types.Person{
 		ID:        strconv.Itoa(p.ID),
 		Name:      p.FirstName + " " + p.LastName,
-		Image:     p.MainPicture.Medium,
 		Birthday:  p.Birthday,
 		Biography: p.More,
 	}
+	if p.MainPicture != nil {
+		out.Image = p.MainPicture.Medium
+	}
+	return out
 }
 
 func buildTitles(main string, alt *altTitles) []types.Title {

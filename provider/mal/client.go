@@ -368,12 +368,15 @@ func handleCharacterResponse(code int, body []byte) (*types.Character, error) {
 		if err := json.Unmarshal(body, &c); err != nil {
 			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: fmt.Errorf("parse: %w", err)}
 		}
-		return &types.Character{
+		out := &types.Character{
 			ID:        strconv.Itoa(c.ID),
 			Names:     []string{c.FirstName + " " + c.LastName},
-			Image:     c.MainPicture.Medium,
 			Biography: c.Biography,
-		}, nil
+		}
+		if c.MainPicture != nil {
+			out.Image = c.MainPicture.Medium
+		}
+		return out, nil
 	case http.StatusNotFound:
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrNotFound}
 	case http.StatusTooManyRequests:
