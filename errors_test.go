@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 )
 
 func TestErrorUnwrap(t *testing.T) {

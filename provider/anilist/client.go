@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/linkeunid/datami/internal/httpx"
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/internal/httpx"
+	"github.com/Hanivan/datami/types"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 	"golang.org/x/net/html"
 )
 

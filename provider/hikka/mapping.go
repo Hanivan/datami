@@ -3,7 +3,7 @@ package hikka
 import (
 	"strconv"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 )
 
 func (i hikkaItem) toMedia() *types.Media {

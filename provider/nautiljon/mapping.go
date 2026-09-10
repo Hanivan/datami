@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/linkeunid/datami/internal/helpers"
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/internal/helpers"
+	"github.com/Hanivan/datami/types"
 	"golang.org/x/net/html"
 )
 

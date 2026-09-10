@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 )
 
 const (

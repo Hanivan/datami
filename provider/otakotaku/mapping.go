@@ -3,7 +3,7 @@ package otakotaku
 import (
 	"strconv"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 )
 
 func (r otakotakuResponse) toMedia() *types.Media {

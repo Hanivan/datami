@@ -3,7 +3,7 @@ package kitsu
 import (
 	"time"
 
-	"github.com/linkeunid/datami/internal/httpx"
+	"github.com/Hanivan/datami/internal/httpx"
 )
 
 type Config struct {

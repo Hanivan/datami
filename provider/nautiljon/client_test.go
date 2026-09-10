@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 )
 
 const nautiljonListHTML = `<!DOCTYPE html><html><body>

@@ -1,4 +1,4 @@
-module github.com/linkeunid/datami
+module github.com/Hanivan/datami
 
 go 1.27.0
 

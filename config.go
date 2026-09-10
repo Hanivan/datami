@@ -3,7 +3,7 @@ package datami
 import (
 	"time"
 
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/types"
 )
 
 type (

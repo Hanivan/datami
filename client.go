@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/linkeunid/datami/provider/anidb"
-	"github.com/linkeunid/datami/provider/anilist"
-	"github.com/linkeunid/datami/provider/kitsu"
-	"github.com/linkeunid/datami/provider/mal"
+	"github.com/Hanivan/datami/provider/anidb"
+	"github.com/Hanivan/datami/provider/anilist"
+	"github.com/Hanivan/datami/provider/kitsu"
+	"github.com/Hanivan/datami/provider/mal"
 )
 
 type Client struct {

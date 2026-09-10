@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/linkeunid/datami/internal/httpx"
-	"github.com/linkeunid/datami/types"
+	"github.com/Hanivan/datami/internal/httpx"
+	"github.com/Hanivan/datami/types"
 )
 
 const (
