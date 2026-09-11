@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -176,6 +177,82 @@ func TestGetSeasonal(t *testing.T) {
 	}
 	if results[0].Titles[0].Text != "Youjo Senki II" {
 		t.Fatalf("expected title Youjo Senki II, got %s", results[0].Titles[0].Text)
+	}
+}
+
+// TestGetSeasonalRequestsFieldsAndOffset pins the query string itself. MAL's
+// list endpoints answer with only id/title/main_picture when `fields` is
+// absent, and silently ignore an unsupported field rather than erroring, so a
+// dropped param shows up as empty struct values rather than a failure —
+// asserting on the parsed result would not catch it.
+func TestGetSeasonalRequestsFieldsAndOffset(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data": [], "paging": {}}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{ClientID: "test", Timeout: 5 * time.Second})
+	if _, err := c.GetSeasonal(context.Background(), 2026, "summer", types.SearchOpts{Limit: 20, Page: 3}); err != nil {
+		t.Fatalf("GetSeasonal failed: %v", err)
+	}
+
+	if got := gotQuery.Get("fields"); got != animeListFields {
+		t.Fatalf("fields = %q, want %q", got, animeListFields)
+	}
+	// Page is 1-based; page 3 at limit 20 starts at item 40.
+	if got := gotQuery.Get("offset"); got != "40" {
+		t.Fatalf("offset = %q, want 40", got)
+	}
+	if got := gotQuery.Get("limit"); got != "20" {
+		t.Fatalf("limit = %q, want 20", got)
+	}
+}
+
+// TestGetSeasonalDefaultsToFirstPage: Page 0 is the zero value every existing
+// caller passes, so it must mean page 1, not offset -20.
+func TestGetSeasonalDefaultsToFirstPage(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data": [], "paging": {}}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{ClientID: "test", Timeout: 5 * time.Second})
+	if _, err := c.GetSeasonal(context.Background(), 2026, "summer", types.SearchOpts{Limit: 20}); err != nil {
+		t.Fatalf("GetSeasonal failed: %v", err)
+	}
+	if got := gotQuery.Get("offset"); got != "0" {
+		t.Fatalf("offset = %q, want 0", got)
+	}
+}
+
+// TestMangaListEndpointsUseMangaFields guards the split: MAL drops
+// num_episodes from a manga request without complaint, so sharing one field
+// constant would silently cost every manga row its chapter and volume counts.
+func TestMangaListEndpointsUseMangaFields(t *testing.T) {
+	var gotQuery url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotQuery = r.URL.Query()
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data": [], "paging": {}}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{ClientID: "test", Timeout: 5 * time.Second})
+	if _, err := c.SearchManga(context.Background(), "naruto", types.SearchOpts{Limit: 5}); err != nil {
+		t.Fatalf("SearchManga failed: %v", err)
+	}
+	got := gotQuery.Get("fields")
+	if got != mangaListFields {
+		t.Fatalf("fields = %q, want %q", got, mangaListFields)
+	}
+	if strings.Contains(got, "num_episodes") {
+		t.Fatal("manga fields must not request num_episodes — MAL drops it silently")
 	}
 }
 

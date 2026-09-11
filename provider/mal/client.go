@@ -32,6 +32,16 @@ const (
 	OpDeleteAnimeListItem   = "deleteanimelistitem"
 )
 
+// MAL's list endpoints (search, seasonal, ranking) return only id, title and
+// main_picture unless `fields` asks for more — unlike the by-id endpoints,
+// which fail loudly on a bad field. A list request for an unsupported field is
+// silently dropped from the response, so anime and manga need separate sets:
+// asking a manga endpoint for num_episodes yields no error and no value.
+const (
+	animeListFields = "id,title,main_picture,media_type,status,num_episodes,mean"
+	mangaListFields = "id,title,main_picture,media_type,status,num_chapters,num_volumes,mean"
+)
+
 func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGet, Err: types.ErrInvalidInput}
@@ -52,7 +62,7 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	u := fmt.Sprintf("%s/anime?q=%s&limit=%d", c.baseURL, url.QueryEscape(query), limit)
+	u := fmt.Sprintf("%s/anime?q=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(query), limit, animeListFields)
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: err}
@@ -84,7 +94,7 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	u := fmt.Sprintf("%s/manga?q=%s&limit=%d", c.baseURL, url.QueryEscape(query), limit)
+	u := fmt.Sprintf("%s/manga?q=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(query), limit, mangaListFields)
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: err}
@@ -96,12 +106,20 @@ func (c *Client) GetMangaByMalID(ctx context.Context, malID string) (*types.Medi
 	return c.GetManga(ctx, malID)
 }
 
+// GetSeasonal returns one page of a season. opts.Page is 1-based and maps to
+// MAL's `offset`; MAL reports no total, so the caller detects the last page by
+// receiving fewer than opts.Limit items.
 func (c *Client) GetSeasonal(ctx context.Context, year int, season string, opts types.SearchOpts) ([]types.Media, error) {
 	limit := opts.Limit
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	u := fmt.Sprintf("%s/anime/season/%d/%s?limit=%d", c.baseURL, year, url.PathEscape(season), limit)
+	page := opts.Page
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+	u := fmt.Sprintf("%s/anime/season/%d/%s?limit=%d&offset=%d&fields=%s", c.baseURL, year, url.PathEscape(season), limit, offset, animeListFields)
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetSeasonal, Err: err}
@@ -114,7 +132,7 @@ func (c *Client) GetRanking(ctx context.Context, rankingType string, opts types.
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	u := fmt.Sprintf("%s/anime/ranking?ranking_type=%s&limit=%d", c.baseURL, url.QueryEscape(rankingType), limit)
+	u := fmt.Sprintf("%s/anime/ranking?ranking_type=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(rankingType), limit, animeListFields)
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: err}
@@ -127,7 +145,7 @@ func (c *Client) GetMangaRanking(ctx context.Context, rankingType string, opts t
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	u := fmt.Sprintf("%s/manga/ranking?ranking_type=%s&limit=%d", c.baseURL, url.QueryEscape(rankingType), limit)
+	u := fmt.Sprintf("%s/manga/ranking?ranking_type=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(rankingType), limit, mangaListFields)
 	code, body, err := c.client.Get(ctx, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: err}
