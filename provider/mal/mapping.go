@@ -103,6 +103,7 @@ func (a anime) toMedia() *types.Media {
 	if a.AlternativeTitles != nil {
 		m.AlternativeTitles = verbatimAltTitles(*a.AlternativeTitles)
 	}
+	m.Stats = verbatimJSON(a.Statistics)
 
 	m.Raw = helpers.RawPayload(a)
 
@@ -253,6 +254,7 @@ func (m manga) toMedia() *types.Media {
 	if m.AlternativeTitles != nil {
 		media.AlternativeTitles = verbatimAltTitles(*m.AlternativeTitles)
 	}
+	media.Stats = verbatimJSON(m.Statistics)
 
 	media.Raw = helpers.RawPayload(m)
 

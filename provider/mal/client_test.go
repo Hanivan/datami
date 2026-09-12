@@ -29,6 +29,8 @@ func TestGetAnime(t *testing.T) {
 			"mean": 8.78,
 			"rank": 40,
 			"popularity": 30,
+			"num_list_users": 2180887,
+			"statistics": {"status": {"watching": "98135", "completed": "1770051", "on_hold": "34687", "dropped": "43294", "plan_to_watch": "234197"}, "num_list_users": 2180364},
 			"genres": [{"id": 1, "name": "Action"}, {"id": 2, "name": "Sci-Fi"}],
 			"studios": [{"id": 14, "name": "Sunrise"}],
 			"alternative_titles": {"en": "Cowboy Bebop", "ja": "カウボーイビバップ", "synonyms": []}
@@ -64,6 +66,15 @@ func TestGetAnime(t *testing.T) {
 	}
 	if m.StartDate == nil || *m.StartDate.Year != 1998 {
 		t.Fatal("start date year mismatch")
+	}
+	if m.Stats == nil {
+		t.Fatal("expected statistics mapped to Stats, got nil")
+	}
+	if !strings.Contains(string(m.Stats), "watching") {
+		t.Fatalf("Stats missing status.watching: %s", string(m.Stats))
+	}
+	if !strings.Contains(string(m.Stats), "num_list_users") {
+		t.Fatalf("Stats missing num_list_users: %s", string(m.Stats))
 	}
 }
 

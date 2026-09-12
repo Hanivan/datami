@@ -62,6 +62,7 @@ type statistics struct {
 		Dropped     flexInt `json:"dropped"`
 		PlanToWatch flexInt `json:"plan_to_watch"`
 	} `json:"status"`
+	NumListUsers flexInt `json:"num_list_users"`
 }
 
 type flexInt int64
