@@ -111,12 +111,12 @@ func (c *Client) doGraphQL(ctx context.Context, query string, vars map[string]an
 	if c.token != "" {
 		req.Header.Set(httpx.HeaderAuthorization, httpx.BearerPrefix+c.token)
 	}
-	code, respBody, err := c.client.Do(req)
+	code, respBody, retryAfter, err := c.client.DoWithRetryAfter(req)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: err}
 	}
 	if code != http.StatusOK {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("status %d", code)}
+		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: statusErr(code), Status: code, RetryAfter: retryAfter}
 	}
 	var result mediaResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
@@ -143,12 +143,12 @@ func (c *Client) doSearchGraphQL(ctx context.Context, query string, vars map[str
 	if c.token != "" {
 		req.Header.Set(httpx.HeaderAuthorization, httpx.BearerPrefix+c.token)
 	}
-	code, respBody, err := c.client.Do(req)
+	code, respBody, retryAfter, err := c.client.DoWithRetryAfter(req)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpSearch, Err: err}
 	}
 	if code != http.StatusOK {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpSearch, Err: fmt.Errorf("status %d", code)}
+		return nil, &types.Error{Source: types.SourceAniList, Op: OpSearch, Err: statusErr(code), Status: code, RetryAfter: retryAfter}
 	}
 	var result searchResponse
 	if err := json.Unmarshal(respBody, &result); err != nil {
@@ -434,14 +434,35 @@ func (c *Client) post(ctx context.Context, query string, vars map[string]any, op
 	if c.token != "" {
 		req.Header.Set(httpx.HeaderAuthorization, httpx.BearerPrefix+c.token)
 	}
-	code, respBody, err := c.client.Do(req)
+	code, respBody, retryAfter, err := c.client.DoWithRetryAfter(req)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: err}
 	}
 	if code != http.StatusOK {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("status %d", code)}
+		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: statusErr(code), Status: code, RetryAfter: retryAfter}
 	}
 	return respBody, nil
+}
+
+// statusErr maps an HTTP status onto the types sentinel that describes it, so
+// callers can errors.Is on the condition instead of scraping the message. A
+// status with no sentinel keeps the numeric text.
+//
+// 403 is rate-limiting here, not authorization: AniList answers 403 to every
+// query during a global suspension or a per-IP block, and in both cases the
+// remedy is to stop calling for a while, exactly as for 429.
+func statusErr(code int) error {
+	switch code {
+	case http.StatusTooManyRequests, http.StatusForbidden:
+		return types.ErrRateLimited
+	case http.StatusNotFound:
+		return types.ErrNotFound
+	case http.StatusUnauthorized:
+		return types.ErrAuthFailed
+	case http.StatusBadRequest:
+		return types.ErrInvalidInput
+	}
+	return fmt.Errorf("status %d", code)
 }
 
 func copyVars(vars map[string]any) map[string]any {

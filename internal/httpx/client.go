@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -86,13 +88,24 @@ func (c *Client) Post(ctx context.Context, url string, body []byte, headers map[
 	return c.Do(req)
 }
 
+// Do performs the request and returns the status and body. Retry-After, when
+// the server sends one, is discarded — use DoWithRetryAfter to see it.
 func (c *Client) Do(req *http.Request) (int, []byte, error) {
+	code, body, _, err := c.DoWithRetryAfter(req)
+	return code, body, err
+}
+
+// DoWithRetryAfter is Do plus the response's Retry-After value in seconds (0
+// when absent or unparseable). A 429 or 503 answers with the cooldown the
+// server actually wants; honouring it beats guessing a backoff, since guessing
+// short keeps the rate limit alive.
+func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
 	}
 	if c.limiter != nil {
 		if err := c.limiter.Wait(req.Context()); err != nil {
-			return 0, nil, fmt.Errorf("rate limiter: %w", err)
+			return 0, nil, 0, fmt.Errorf("rate limiter: %w", err)
 		}
 	}
 	var lastErr error
@@ -122,7 +135,23 @@ func (c *Client) Do(req *http.Request) (int, []byte, error) {
 			lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
 			continue
 		}
-		return resp.StatusCode, body, nil
+		return resp.StatusCode, body, retryAfterSeconds(resp), nil
 	}
-	return 0, nil, fmt.Errorf("after %d attempts: %w", MaxRetries, lastErr)
+	return 0, nil, 0, fmt.Errorf("after %d attempts: %w", MaxRetries, lastErr)
+}
+
+// retryAfterSeconds reads the Retry-After header. Only the delta-seconds form
+// is honoured — the HTTP-date form is rare in practice and a misparsed date
+// would produce a nonsense cooldown, so an unparseable value reports 0 and the
+// caller falls back to its own default.
+func retryAfterSeconds(resp *http.Response) int {
+	v := resp.Header.Get("Retry-After")
+	if v == "" {
+		return 0
+	}
+	secs, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || secs < 0 {
+		return 0
+	}
+	return secs
 }
