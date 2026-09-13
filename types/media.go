@@ -37,8 +37,8 @@ type Title struct {
 }
 
 type ExternalID struct {
-	Source       string `json:"source"`
-	ID           string `json:"id"`
+	Source       string       `json:"source"`
+	ID           string       `json:"id"`
 	ResourceType ResourceType `json:"resource_type,omitempty"`
 }
 
@@ -63,42 +63,42 @@ type Relation struct {
 // Media is the canonical, source-independent response shape. It carries every
 // field mono-crawler's domain.Media persists, so a Normalize pass can map 1:1.
 type Media struct {
-	Titles            []Title      `json:"titles,omitempty"`
-	Synopsis          string       `json:"synopsis,omitempty"`
-	StartDate         *Date        `json:"start_date,omitempty"`
-	EndDate           *Date        `json:"end_date,omitempty"`
-	Status            MediaStatus  `json:"-"`
-	MediaType         MediaType    `json:"-"`
-	EpisodeCount      int          `json:"episode_count,omitempty"`
-	ChapterCount      int          `json:"chapter_count,omitempty"`
-	VolumeCount       int          `json:"volume_count,omitempty"`
-	DurationMin       int          `json:"duration_min,omitempty"`
-	Score             *Score       `json:"score,omitempty"`
-	Genres            []string     `json:"genres,omitempty"`
-	Studios           []Studio     `json:"studios,omitempty"`
+	Titles            []Title             `json:"titles,omitempty"`
+	Synopsis          string              `json:"synopsis,omitempty"`
+	StartDate         *Date               `json:"start_date,omitempty"`
+	EndDate           *Date               `json:"end_date,omitempty"`
+	Status            MediaStatus         `json:"-"`
+	MediaType         MediaType           `json:"-"`
+	EpisodeCount      int                 `json:"episode_count,omitempty"`
+	ChapterCount      int                 `json:"chapter_count,omitempty"`
+	VolumeCount       int                 `json:"volume_count,omitempty"`
+	DurationMin       int                 `json:"duration_min,omitempty"`
+	Score             *Score              `json:"score,omitempty"`
+	Genres            []string            `json:"genres,omitempty"`
+	Studios           []Studio            `json:"studios,omitempty"`
 	Images            map[ImageSize]Image `json:"images,omitempty"`
-	Relations         []Relation   `json:"relations,omitempty"`
-	ExternalIDs       []ExternalID `json:"external_ids,omitempty"`
-	Season            Season       `json:"season,omitempty"`
-	Year              int          `json:"year,omitempty"`
-	NumListUsers      int          `json:"num_list_users,omitempty"`
-	NumScoringUsers   int          `json:"num_scoring_users,omitempty"`
-	NumFavorites      int          `json:"num_favorites,omitempty"`
-	Nsfw              string       `json:"nsfw,omitempty"`
-	Rating            string       `json:"rating,omitempty"`
-	Background        string       `json:"background,omitempty"`
-	SourceField       string       `json:"source_field,omitempty"`
-	MediaTypeField    string       `json:"media_type_field,omitempty"`
-	StatusField       string       `json:"status_field,omitempty"`
-	AverageEpDur      int          `json:"average_ep_dur,omitempty"`
-	Broadcast         json.RawMessage `json:"broadcast,omitempty"`
-	Pictures          json.RawMessage `json:"pictures,omitempty"`
-	AlternativeTitles json.RawMessage `json:"alternative_titles,omitempty"`
-	Rankings          json.RawMessage `json:"rankings,omitempty"`
-	Stats             json.RawMessage `json:"stats,omitempty"`
-	Authors           []Author     `json:"authors,omitempty"`
-	Magazines         []Magazine   `json:"magazines,omitempty"`
-	Raw               map[string]any `json:"-"`
+	Relations         []Relation          `json:"relations,omitempty"`
+	ExternalIDs       []ExternalID        `json:"external_ids,omitempty"`
+	Season            Season              `json:"season,omitempty"`
+	Year              int                 `json:"year,omitempty"`
+	NumListUsers      int                 `json:"num_list_users,omitempty"`
+	NumScoringUsers   int                 `json:"num_scoring_users,omitempty"`
+	NumFavorites      int                 `json:"num_favorites,omitempty"`
+	Nsfw              string              `json:"nsfw,omitempty"`
+	Rating            string              `json:"rating,omitempty"`
+	Background        string              `json:"background,omitempty"`
+	SourceField       string              `json:"source_field,omitempty"`
+	MediaTypeField    string              `json:"media_type_field,omitempty"`
+	StatusField       string              `json:"status_field,omitempty"`
+	AverageEpDur      int                 `json:"average_ep_dur,omitempty"`
+	Broadcast         json.RawMessage     `json:"broadcast,omitempty"`
+	Pictures          json.RawMessage     `json:"pictures,omitempty"`
+	AlternativeTitles json.RawMessage     `json:"alternative_titles,omitempty"`
+	Rankings          json.RawMessage     `json:"rankings,omitempty"`
+	Stats             json.RawMessage     `json:"stats,omitempty"`
+	Authors           []Author            `json:"authors,omitempty"`
+	Magazines         []Magazine          `json:"magazines,omitempty"`
+	Raw               map[string]any      `json:"-"`
 }
 
 type Author struct {

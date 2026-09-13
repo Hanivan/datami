@@ -9,9 +9,9 @@ package types
 // (a native name is not "first last", and an alternative list is not one
 // value). Names stays as the display list.
 type Character struct {
-	ID    string `json:"id"`
+	ID    string   `json:"id"`
 	Names []string `json:"names,omitempty"`
-	Image string `json:"image,omitempty"`
+	Image string   `json:"image,omitempty"`
 	// ImageLarge is the large variant when the source supplies both sizes;
 	// Image holds the medium/default one.
 	ImageLarge      string   `json:"image_large,omitempty"`
@@ -22,7 +22,7 @@ type Character struct {
 	AlternativeName []string `json:"alternative_name,omitempty"`
 	// NumFavorites is the source's favourite count, nil when not supplied.
 	// A pointer because 0 is a real count and must not read as absent.
-	NumFavorites *int `json:"num_favorites,omitempty"`
+	NumFavorites *int            `json:"num_favorites,omitempty"`
 	Roles        []CharacterRole `json:"roles,omitempty"`
 	// VoiceActors are the character's VAs for the media it was fetched with
 	// (AniList only; MAL's character roster carries none).
@@ -43,7 +43,7 @@ type VoiceActor struct {
 
 // CharacterRole links a character to a media with a role (main/supporting).
 type CharacterRole struct {
-	MediaID string `json:"media_id"`
+	MediaID string            `json:"media_id"`
 	Role    CharacterRoleType `json:"role"`
 }
 

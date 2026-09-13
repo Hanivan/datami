@@ -22,6 +22,10 @@ func (m media) toMedia() *types.Media {
 		} else if *m.Status != "" {
 			result.Status = types.MediaStatus(strings.ToLower(*m.Status))
 		}
+		// StatusField carries the verbatim upstream string. Status is json:"-"
+		// (it is a canonicalization, not upstream data), so a consumer that
+		// serializes Media only sees the value through this field.
+		result.StatusField = *m.Status
 	}
 
 	if m.Format != nil {
@@ -30,6 +34,8 @@ func (m media) toMedia() *types.Media {
 		} else if *m.Format != "" {
 			result.MediaType = types.MediaType(strings.ToLower(*m.Format))
 		}
+		// Same contract as StatusField: MediaType is json:"-".
+		result.MediaTypeField = *m.Format
 	}
 
 	if m.AverageScore != nil || m.MeanScore != nil || m.Popularity != nil {
@@ -101,6 +107,12 @@ func (m media) toMedia() *types.Media {
 			ResourceType: types.ResourceAnime,
 		})
 	}
+
+	// Rankings and stats are upstream blobs, not canonicalizations: carry them
+	// in the tagged fields so they survive serialization. Raw is json:"-" and
+	// would drop them.
+	result.Rankings = m.Rankings
+	result.Stats = m.Stats
 
 	result.Raw = helpers.RawPayload(m)
 
