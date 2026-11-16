@@ -34,9 +34,10 @@ func New(cfg Config) (*Client, error) {
 	}
 
 	anilistClient, err := anilist.New(anilist.Config{
-		Token:   cfg.AniListToken,
-		Timeout: timeout,
-		Metrics: metrics,
+		Token:             cfg.AniListToken,
+		Timeout:           timeout,
+		Metrics:           metrics,
+		DescriptionAsHTML: cfg.AniListDescriptionAsHTML,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("anilist: %w", err)

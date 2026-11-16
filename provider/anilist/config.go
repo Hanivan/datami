@@ -10,12 +10,16 @@ type Config struct {
 	Token   string
 	Timeout time.Duration
 	Metrics func(source string, op string, dur time.Duration, err error)
+	// DescriptionAsHTML sets asHtml on every description field (Media and
+	// Character). nil means true (HTML); false returns AniList markdown.
+	DescriptionAsHTML *bool
 }
 
 type Client struct {
 	baseURL string
 	client  *httpx.Client
 	token   string
+	asHTML  *bool
 	metrics func(source string, op string, dur time.Duration, err error)
 }
 
@@ -45,6 +49,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 			},
 		}),
 		token:   cfg.Token,
+		asHTML:  cfg.DescriptionAsHTML,
 		metrics: cfg.Metrics,
 	}, nil
 }

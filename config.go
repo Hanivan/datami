@@ -30,9 +30,11 @@ var (
 )
 
 type Config struct {
-	MALClientID   string
-	AniListToken  string
-	Timeout       time.Duration
-	RateLimitRate float64
-	Metrics       MetricsHook
+	MALClientID  string
+	AniListToken string
+	// AniListDescriptionAsHTML: see anilist.Config.DescriptionAsHTML.
+	AniListDescriptionAsHTML *bool
+	Timeout                  time.Duration
+	RateLimitRate            float64
+	Metrics                  MetricsHook
 }

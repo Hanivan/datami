@@ -34,7 +34,7 @@ func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGet, Err: types.ErrInvalidInput}
 	}
-	query := `query ($id: Int) { Media(id: $id) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format episodes duration chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
+	query := `query ($id: Int) { Media(id: $id) { id type title { romaji english native } ` + c.desc() + ` startDate { year month day } endDate { year month day } status format episodes duration chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
 	vars := map[string]any{"id": parseID(id)}
 	return c.doGraphQL(ctx, query, vars, OpGet)
 }
@@ -47,7 +47,7 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	gql := `query ($search: String, $perPage: Int) { Page(perPage: $perPage) { Media(search: $search) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format episodes duration averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } } }`
+	gql := `query ($search: String, $perPage: Int) { Page(perPage: $perPage) { Media(search: $search) { id type title { romaji english native } ` + c.desc() + ` startDate { year month day } endDate { year month day } status format episodes duration averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } } }`
 	vars := map[string]any{"search": query, "perPage": limit}
 	return c.doSearchGraphQL(ctx, gql, vars)
 }
@@ -60,7 +60,7 @@ func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, er
 	if malID == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetByMalID, Err: types.ErrInvalidInput}
 	}
-	query := `query ($malId: Int, $type: MediaType) { Media(idMal: $malId, type: $type) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format episodes duration chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
+	query := `query ($malId: Int, $type: MediaType) { Media(idMal: $malId, type: $type) { id type title { romaji english native } ` + c.desc() + ` startDate { year month day } endDate { year month day } status format episodes duration chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } studios { nodes { id name } } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
 	vars := map[string]any{"malId": parseID(malID), "type": "ANIME"}
 	return c.doGraphQL(ctx, query, vars, OpGetByMalID)
 }
@@ -69,7 +69,7 @@ func (c *Client) GetManga(ctx context.Context, id string) (*types.Media, error) 
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetManga, Err: types.ErrInvalidInput}
 	}
-	query := `query ($id: Int) { Media(id: $id, type: MANGA) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
+	query := `query ($id: Int) { Media(id: $id, type: MANGA) { id type title { romaji english native } ` + c.desc() + ` startDate { year month day } endDate { year month day } status format chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
 	vars := map[string]any{"id": parseID(id)}
 	return c.doGraphQL(ctx, query, vars, OpGetManga)
 }
@@ -82,7 +82,7 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 	if limit == 0 {
 		limit = httpx.DefaultSearchLimit
 	}
-	gql := `query ($search: String, $perPage: Int) { Page(perPage: $perPage) { Media(search: $search, type: MANGA) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } coverImage { medium large } bannerImage synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } } }`
+	gql := `query ($search: String, $perPage: Int) { Page(perPage: $perPage) { Media(search: $search, type: MANGA) { id type title { romaji english native } ` + c.desc() + ` startDate { year month day } endDate { year month day } status format chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } coverImage { medium large } bannerImage synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } } }`
 	vars := map[string]any{"search": query, "perPage": limit}
 	return c.doSearchGraphQL(ctx, gql, vars)
 }
@@ -91,7 +91,7 @@ func (c *Client) GetMangaByMalID(ctx context.Context, malID string) (*types.Medi
 	if malID == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetMangaByMalID, Err: types.ErrInvalidInput}
 	}
-	query := `query ($malId: Int) { Media(idMal: $malId, type: MANGA) { id type title { romaji english native } description startDate { year month day } endDate { year month day } status format chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
+	query := `query ($malId: Int) { Media(idMal: $malId, type: MANGA) { id type title { romaji english native } ` + c.desc() + ` startDate { year month day } endDate { year month day } status format chapters volumes averageScore meanScore popularity favourites genres tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } coverImage { medium large } bannerImage relations { edges { relationType node { id idMal type format title { romaji } } } } synonyms idMal source countryOfOrigin isAdult externalLinks { id url site siteId type language notes isDisabled } rankings { id rank type format year season allTime context } stats { scoreDistribution { score amount } statusDistribution { status amount } } } }`
 	vars := map[string]any{"malId": parseID(malID)}
 	return c.doGraphQL(ctx, query, vars, OpGetMangaByMalID)
 }
@@ -201,7 +201,7 @@ func (c *Client) charactersBy(ctx context.Context, idField, id, mediaType string
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: types.ErrInvalidInput}
 	}
-	sel := `characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } description(asHtml: true) } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
+	sel := `characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } ` + c.desc() + ` } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
 	query, vars := mediaPageQuery(idField, id, mediaType, sel)
 	var all []characterEdge
 	for page := 1; page <= 10; page++ {
@@ -476,4 +476,10 @@ func copyVars(vars map[string]any) map[string]any {
 func parseID(s string) int {
 	id, _ := strconv.Atoi(s)
 	return id
+}
+
+// desc is the description field selection. nil asHTML means HTML, so Media
+// and Character descriptions share one format by default.
+func (c *Client) desc() string {
+	return "description(asHtml: " + strconv.FormatBool(c.asHTML == nil || *c.asHTML) + ")"
 }
