@@ -201,7 +201,7 @@ func (c *Client) charactersBy(ctx context.Context, idField, id, mediaType string
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: types.ErrInvalidInput}
 	}
-	sel := `characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } description } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
+	sel := `characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } description(asHtml: true) } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
 	query, vars := mediaPageQuery(idField, id, mediaType, sel)
 	var all []characterEdge
 	for page := 1; page <= 10; page++ {
