@@ -1,6 +1,19 @@
 package anidb
 
-import "github.com/Hanivan/datami/types"
+import (
+	"fmt"
+
+	"github.com/Hanivan/datami/types"
+)
+
+const (
+	// maxAnimeXML caps a decompressed anime response.
+	maxAnimeXML = 16 << 20
+	// maxTitlesDump caps the decompressed titles dump.
+	maxTitlesDump = 256 << 20
+)
+
+var errTooLarge = fmt.Errorf("%w: response too large", types.ErrUnavailable)
 
 const (
 	imageBaseURL = "https://cdn.anidb.net/images/main/"

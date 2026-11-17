@@ -216,3 +216,13 @@ func TestGetMangaNotImplemented(t *testing.T) {
 		t.Fatalf("GetMangaByMalID err = %v", err)
 	}
 }
+
+func TestGunzipTooLarge(t *testing.T) {
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	zw.Write(make([]byte, maxAnimeXML+1))
+	zw.Close()
+	if _, err := gunzip(buf.Bytes()); !errors.Is(err, errTooLarge) {
+		t.Fatalf("err = %v, want errTooLarge", err)
+	}
+}

@@ -25,7 +25,12 @@ const (
 	HeaderAccept        = "Accept"
 	HeaderAuthorization = "Authorization"
 	BearerPrefix        = "Bearer "
+	// DefaultMaxBody caps a response body read into memory.
+	DefaultMaxBody = 32 << 20
 )
+
+// ErrBodyTooLarge marks a response body over Config.MaxBody. Not retried.
+var ErrBodyTooLarge = errors.New("httpx: response body too large")
 
 // ErrLimiterWait marks a failed rate limiter wait: no request was sent. The
 // limiter or ctx error stays in the chain.
@@ -40,6 +45,8 @@ type Config struct {
 	Headers   map[string]string
 	// MaxRetries is total attempts per request; 0 uses the MaxRetries const.
 	MaxRetries int
+	// MaxBody caps the response body in bytes; 0 uses DefaultMaxBody.
+	MaxBody int64
 }
 
 type Client struct {
@@ -48,6 +55,7 @@ type Client struct {
 	metrics    func(op string, dur time.Duration, err error)
 	headers    map[string]string
 	maxRetries int
+	maxBody    int64
 }
 
 func New(cfg Config) *Client {
@@ -67,6 +75,10 @@ func New(cfg Config) *Client {
 	if maxRetries <= 0 {
 		maxRetries = MaxRetries
 	}
+	maxBody := cfg.MaxBody
+	if maxBody <= 0 {
+		maxBody = DefaultMaxBody
+	}
 	base := &http.Client{
 		Timeout: timeout,
 	}
@@ -79,6 +91,7 @@ func New(cfg Config) *Client {
 		metrics:    cfg.Metrics,
 		headers:    cfg.Headers,
 		maxRetries: maxRetries,
+		maxBody:    maxBody,
 	}
 }
 
@@ -137,10 +150,16 @@ func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
 			}
 			continue
 		}
-		body, readErr := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, c.maxBody+1))
 		resp.Body.Close()
+		if readErr == nil && int64(len(body)) > c.maxBody {
+			readErr = fmt.Errorf("%w: limit %d bytes", ErrBodyTooLarge, c.maxBody)
+		}
 		if c.metrics != nil {
 			c.metrics(req.Method, time.Since(start), readErr)
+		}
+		if errors.Is(readErr, ErrBodyTooLarge) {
+			return resp.StatusCode, nil, 0, readErr
 		}
 		if readErr != nil {
 			lastErr = readErr

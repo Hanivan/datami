@@ -174,7 +174,14 @@ func gunzip(body []byte) ([]byte, error) {
 		return nil, err
 	}
 	defer zr.Close()
-	return io.ReadAll(zr)
+	out, err := io.ReadAll(io.LimitReader(zr, maxAnimeXML+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(out) > maxAnimeXML {
+		return nil, errTooLarge
+	}
+	return out, nil
 }
 
 // bodyError maps an AniDB <error> root element (sent with HTTP 200).

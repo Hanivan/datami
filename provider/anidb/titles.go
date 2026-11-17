@@ -122,7 +122,10 @@ func (c *Client) titleIndex(ctx context.Context) ([]titleRecord, error) {
 		return idx, nil
 	}
 
-	s.lastErr = wrap(OpSearch, fmt.Errorf("%w: titles dump: %w", types.ErrUnavailable, err))
+	if !errors.Is(err, types.ErrUnavailable) {
+		err = fmt.Errorf("%w: %w", types.ErrUnavailable, err)
+	}
+	s.lastErr = wrap(OpSearch, fmt.Errorf("titles dump: %w", err))
 	if statErr == nil {
 		if idx, ferr := readTitlesFile(path); ferr == nil {
 			// Serve the stale file; retry the download in titlesRetryCooldown.
@@ -185,6 +188,22 @@ func writeTitlesFile(path string, data []byte, now time.Time) error {
 
 // parseTitles streams a gzip (sniffed by magic bytes) or plain XML dump.
 func parseTitles(r io.Reader) ([]titleRecord, error) {
+	return parseTitlesN(r, maxTitlesDump)
+}
+
+type countReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
+}
+
+// parseTitlesN is parseTitles with a cap on decompressed bytes.
+func parseTitlesN(r io.Reader, max int64) ([]titleRecord, error) {
 	br := bufio.NewReader(r)
 	var src io.Reader = br
 	if magic, _ := br.Peek(2); len(magic) == 2 && magic[0] == 0x1f && magic[1] == 0x8b {
@@ -195,9 +214,20 @@ func parseTitles(r io.Reader) ([]titleRecord, error) {
 		defer zr.Close()
 		src = zr
 	}
+	cr := &countReader{r: io.LimitReader(src, max+1)}
 	var d titlesDump
-	if err := xml.NewDecoder(src).Decode(&d); err != nil {
+	err := xml.NewDecoder(cr).Decode(&d)
+	if err == nil {
+		io.Copy(io.Discard, cr) // count trailing bytes too
+	}
+	if cr.n > max {
+		return nil, fmt.Errorf("parse titles: %w", errTooLarge)
+	}
+	if err != nil {
 		return nil, fmt.Errorf("parse titles: %w", err)
+	}
+	if len(d.Anime) == 0 {
+		return nil, fmt.Errorf("%w: empty titles dump", types.ErrUnavailable)
 	}
 	idx := make([]titleRecord, 0, len(d.Anime))
 	for _, a := range d.Anime {

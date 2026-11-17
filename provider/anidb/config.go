@@ -10,8 +10,9 @@ import (
 )
 
 const (
+	// defaultAPIURL is plain HTTP: AniDB serves no TLS on port 9001.
 	defaultAPIURL    = "http://api.anidb.net:9001/httpapi"
-	defaultTitlesURL = "http://anidb.net/api/anime-titles.xml.gz"
+	defaultTitlesURL = "https://anidb.net/api/anime-titles.xml.gz"
 )
 
 type Config struct {
@@ -88,6 +89,8 @@ func newClient(apiURL, titlesURL string, cfg Config) *Client {
 			Rate:       0.5,
 			Burst:      1,
 			MaxRetries: 1,
+			// The gzipped titles dump is ~10 MiB; leave headroom over the default.
+			MaxBody: 64 << 20,
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
 					cfg.Metrics(types.SourceAniDB, op, dur, err)

@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -42,6 +43,27 @@ func TestClientGetNotFound(t *testing.T) {
 	}
 	if code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", code)
+	}
+}
+
+func TestMaxBody(t *testing.T) {
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.Write([]byte("0123456789"))
+	}))
+	defer srv.Close()
+
+	if _, body, err := New(Config{MaxBody: 10}).Get(context.Background(), srv.URL); err != nil || len(body) != 10 {
+		t.Fatalf("at cap: body %q, err %v", body, err)
+	}
+	hits = 0
+	_, _, err := New(Config{MaxBody: 9}).Get(context.Background(), srv.URL)
+	if !errors.Is(err, ErrBodyTooLarge) {
+		t.Fatalf("over cap: err = %v, want ErrBodyTooLarge", err)
+	}
+	if hits != 1 {
+		t.Fatalf("over cap retried: %d requests", hits)
 	}
 }
 

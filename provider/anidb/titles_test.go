@@ -402,3 +402,25 @@ func TestSearchWaiterHonorsCtx(t *testing.T) {
 	unblock()
 	<-first
 }
+
+func TestParseTitlesEmpty(t *testing.T) {
+	if _, err := parseTitles(strings.NewReader("<animetitles></animetitles>")); err == nil {
+		t.Fatal("want error for empty dump")
+	}
+}
+
+func TestParseTitlesLimit(t *testing.T) {
+	dump := `<animetitles><anime aid="1"><title xml:lang="x-jat" type="main">A</title></anime></animetitles>`
+	if _, err := parseTitlesN(strings.NewReader(dump), int64(len(dump)-1)); !errors.Is(err, errTooLarge) {
+		t.Fatalf("err = %v, want errTooLarge", err)
+	}
+	if _, err := parseTitlesN(strings.NewReader(dump), int64(len(dump))); err != nil {
+		t.Fatalf("at limit: %v", err)
+	}
+}
+
+func TestDefaultTitlesURLHTTPS(t *testing.T) {
+	if !strings.HasPrefix(defaultTitlesURL, "https://") {
+		t.Fatal(defaultTitlesURL)
+	}
+}
