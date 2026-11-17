@@ -65,5 +65,6 @@ This repo does not auto-format. Always run `gofmt -l .` before finishing — CI 
 
 ## Docs
 
+- `docs/features/` - per-feature docs (one file per provider + configuration, errors, http-client, media-model). Keep README.md short; put details here and update the matching file when behaviour changes.
 - `docs/api-docs/` - provider API reference docs (MAL, AniList, AniDB)
 - `docs/superpowers/specs/` - design specs (gitignored, local only)
