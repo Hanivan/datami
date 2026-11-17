@@ -348,7 +348,7 @@ func TestSearchLimiterRefusalNoCooldown(t *testing.T) {
 	clk := &fakeClock{t: time.Now()}
 	c.now = clk.now
 	// Consume the only token.
-	if _, _, err := c.client.Get(context.Background(), srv.URL); err != nil {
+	if _, _, _, err := c.client.Get(context.Background(), OpSearch, srv.URL); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)

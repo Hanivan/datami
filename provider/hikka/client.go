@@ -47,11 +47,11 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 		return nil, &types.Error{Source: types.SourceHikka, Op: OpSearch, Err: fmt.Errorf("marshal: %w", err)}
 	}
 	url := fmt.Sprintf("%s/anime?page=%d&size=%d", c.baseURL, page, limit)
-	code, respBody, err := c.client.Post(ctx, url, body, hikkaHeaders())
+	code, respBody, retryAfter, err := c.client.Post(ctx, OpSearch, url, body, hikkaHeaders())
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceHikka, Op: OpSearch, Err: err}
 	}
-	return handleListResponse(code, respBody, OpSearch)
+	return handleListResponse(code, respBody, OpSearch, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -71,8 +71,8 @@ func hikkaHeaders() map[string]string {
 	}
 }
 
-func handleListResponse(code int, body []byte, op string) ([]types.Media, error) {
-	resp, err := helpers.DecodeJSON[hikkaResponse](types.SourceHikka, op, code, body)
+func handleListResponse(code int, body []byte, op string, retryAfter int) ([]types.Media, error) {
+	resp, err := helpers.DecodeJSON[hikkaResponse](types.SourceHikka, op, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}

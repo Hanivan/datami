@@ -6,7 +6,7 @@
 
 ## How it works
 
-`httpx.New(Config)` then `Get`, `Post`, `Do`, `DoWithRetryAfter` (returns status, body, retry-after seconds, error).
+`httpx.New(Config)` then `Get(ctx, op, url)`, `Post(ctx, op, url, body, headers)`, `Do(op, req)`. All return status, body, retry-after seconds, error. `op` is the provider `Op*` constant, reported to the metrics callback.
 
 Per request, up to `maxRetries` attempts (total attempts, not extra):
 
@@ -20,7 +20,7 @@ After exhaustion: last status and body with error `after N attempts: <cause>`. 4
 
 Retry-After: delta-seconds form only; missing, negative or HTTP-date value gives 0.
 
-Metrics callback `func(op string, dur time.Duration, err error)` fires after every attempt with `op` = HTTP method; `err` is the transport or read/size error (nil on any HTTP response). Providers wrap it to prepend the source name.
+Metrics callback `func(op string, dur time.Duration, err error)` fires after every attempt with `op` = the provider operation name passed to `Get`/`Post`/`Do` (the provider `Op*` const, e.g. `mal.OpGet`); `err` is the transport or read/size error (nil on any HTTP response). Providers wrap it to prepend the source name.
 
 ## Config
 
@@ -54,10 +54,7 @@ Burst is unset (defaults to 1) in all providers except AniDB, which sets it expl
 
 ```go
 c := httpx.New(httpx.Config{Rate: 2, MaxRetries: 3, MaxBody: 1 << 20})
-code, body, retryAfter, err := func() (int, []byte, int, error) {
-    req, _ := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-    return c.DoWithRetryAfter(req)
-}()
+code, body, retryAfter, err := c.Get(ctx, "get", url)
 if errors.Is(err, httpx.ErrBodyTooLarge) { /* ... */ }
 ```
 
@@ -67,12 +64,10 @@ if errors.Is(err, httpx.ErrBodyTooLarge) { /* ... */ }
 go test ./internal/httpx/
 ```
 
-Covers success, `MaxBody`, `MaxRetries`, per-attempt limiter, `Retry-After`.
+Covers success, `MaxBody`, `MaxRetries`, per-attempt limiter, `Retry-After`, metrics `op`, POST body resend on retry.
 
 ## Gotchas
 
-- Only AniList calls `DoWithRetryAfter`; others use `Do`, which discards Retry-After.
 - `MaxRetries: 1` means one request, no retry (AniDB, to respect its ban rules).
 - Sleep between retries ignores ctx cancellation (`time.Sleep`); the limiter wait does honor ctx.
-- Retries reuse the same `*http.Request` without resetting `Body` (no `GetBody` call in the loop); a retried POST may not resend its body (unverified).
 - 4xx statuses mapped to errors by providers, see [errors.md](errors.md); config entry point in [configuration.md](configuration.md).

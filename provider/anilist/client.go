@@ -142,7 +142,7 @@ func (c *Client) post(ctx context.Context, query string, vars map[string]any, op
 	if c.token != "" {
 		req.Header.Set(httpx.HeaderAuthorization, httpx.BearerPrefix+c.token)
 	}
-	code, respBody, retryAfter, err := c.client.DoWithRetryAfter(req)
+	code, respBody, retryAfter, err := c.client.Do(op, req)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: err}
 	}

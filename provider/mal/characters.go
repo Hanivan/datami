@@ -16,11 +16,11 @@ func (c *Client) GetAnimeCharacters(ctx context.Context, animeID string) ([]type
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/anime/%s/characters?limit=100&fields=first_name,last_name,alternative_name,main_picture,num_favorites,biography", c.baseURL, url.PathEscape(animeID))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetAnimeCharacters, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: err}
 	}
-	return handleCharactersResponse(code, body)
+	return handleCharactersResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetCharacter(ctx context.Context, charID string) (*types.Character, error) {
@@ -28,11 +28,11 @@ func (c *Client) GetCharacter(ctx context.Context, charID string) (*types.Charac
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/characters/%s?fields=first_name,last_name,alternative_name,main_picture,num_favorites,biography,animeography", c.baseURL, url.PathEscape(charID))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetCharacter, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: err}
 	}
-	return handleCharacterResponse(code, body)
+	return handleCharacterResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetPerson(ctx context.Context, personID string) (*types.Person, error) {
@@ -40,15 +40,15 @@ func (c *Client) GetPerson(ctx context.Context, personID string) (*types.Person,
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/people/%s?fields=first_name,last_name,main_picture,birthday,num_favorites,more", c.baseURL, url.PathEscape(personID))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetPerson, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: err}
 	}
-	return handlePersonResponse(code, body)
+	return handlePersonResponse(code, body, retryAfter)
 }
 
-func handleCharactersResponse(code int, body []byte) ([]types.Character, error) {
-	resp, err := helpers.DecodeJSON[charactersResponse](types.SourceMAL, OpGetAnimeCharacters, code, body)
+func handleCharactersResponse(code int, body []byte, retryAfter int) ([]types.Character, error) {
+	resp, err := helpers.DecodeJSON[charactersResponse](types.SourceMAL, OpGetAnimeCharacters, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
@@ -59,16 +59,16 @@ func handleCharactersResponse(code int, body []byte) ([]types.Character, error) 
 	return results, nil
 }
 
-func handleCharacterResponse(code int, body []byte) (*types.Character, error) {
-	c, err := helpers.DecodeJSON[character](types.SourceMAL, OpGetCharacter, code, body)
+func handleCharacterResponse(code int, body []byte, retryAfter int) (*types.Character, error) {
+	c, err := helpers.DecodeJSON[character](types.SourceMAL, OpGetCharacter, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
 	return c.toCharacter(), nil
 }
 
-func handlePersonResponse(code int, body []byte) (*types.Person, error) {
-	p, err := helpers.DecodeJSON[person](types.SourceMAL, OpGetPerson, code, body)
+func handlePersonResponse(code int, body []byte, retryAfter int) (*types.Person, error) {
+	p, err := helpers.DecodeJSON[person](types.SourceMAL, OpGetPerson, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}

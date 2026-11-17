@@ -2,6 +2,7 @@ package otakotaku
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,5 +45,12 @@ func TestSearchNotImplemented(t *testing.T) {
 	_, err := c.Search(context.Background(), "test", types.SearchOpts{})
 	if err == nil {
 		t.Fatal("expected error for Search")
+	}
+}
+
+func TestGetByMalIDNotImplemented(t *testing.T) {
+	c := NewWithTestServer("http://unused", Config{})
+	if _, err := c.GetByMalID(context.Background(), "1"); !errors.Is(err, types.ErrNotImplemented) {
+		t.Fatalf("want ErrNotImplemented, got %v", err)
 	}
 }

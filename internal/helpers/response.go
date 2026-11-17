@@ -18,7 +18,7 @@ var keyless = map[string]bool{
 }
 
 // StatusError maps a non-200 HTTP status to a *types.Error carrying the status.
-func StatusError(source, op string, code int) error {
+func StatusError(source, op string, code, retryAfter int) error {
 	var err error
 	switch code {
 	case http.StatusNotFound:
@@ -35,14 +35,14 @@ func StatusError(source, op string, code int) error {
 	default:
 		err = fmt.Errorf("status %d", code)
 	}
-	return &types.Error{Source: source, Op: op, Status: code, Err: err}
+	return &types.Error{Source: source, Op: op, Status: code, RetryAfter: retryAfter, Err: err}
 }
 
 // DecodeJSON returns StatusError for non-200 codes, else unmarshals body into T.
-func DecodeJSON[T any](source, op string, code int, body []byte) (T, error) {
+func DecodeJSON[T any](source, op string, code, retryAfter int, body []byte) (T, error) {
 	var v T
 	if code != http.StatusOK {
-		return v, StatusError(source, op, code)
+		return v, StatusError(source, op, code, retryAfter)
 	}
 	if err := json.Unmarshal(body, &v); err != nil {
 		return v, &types.Error{Source: source, Op: op, Err: fmt.Errorf("parse: %w", err)}

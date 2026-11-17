@@ -8,7 +8,7 @@ ID cross-reference lookups from `https://otakotaku.com` (Indonesian site). No ke
 | ---------------------- | ------------------------------------------------------------------- |
 | `Get(ctx, id)`         | `GET /api/anime/view/{id}/placeholder` (Otakotaku ID; empty gives `ErrInvalidInput`) |
 | `ListAll(ctx, opts)`   | same endpoint with `opts.Page` as the ID (min 1); returns one item  |
-| `GetByMalID(ctx, malID)` | `ListAll` with ID = `malID`, then checks the MAL external ID matches |
+| `GetByMalID(ctx, malID)` | `ErrNotImplemented`: no MAL-id lookup; use `ListAll` and match `ExternalIDs` |
 | `Search`               | `ErrNotImplemented`                                                 |
 
 ## How it works
@@ -29,5 +29,4 @@ JSON via `helpers.DecodeJSON`. Non-200 via `helpers.StatusError`: 403 `ErrRateLi
 
 ## Gotchas
 
-- `GetByMalID` passes the MAL ID as the Otakotaku ID; it only succeeds when both IDs coincide, else `ErrNotFound`. Non-numeric `malID` gives `ErrInvalidInput`.
 - Value of `ListAll` is crawling by sequential ID, not a catalog listing.

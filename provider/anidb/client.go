@@ -120,9 +120,9 @@ func (c *Client) fetchAnime(ctx context.Context, op, aid string) (*anime, error)
 		"protover":  {"1"},
 		"aid":       {aid},
 	}
-	code, body, err := c.client.Get(ctx, c.apiURL+"?"+q.Encode())
+	code, body, retryAfter, err := c.client.Get(ctx, op, c.apiURL+"?"+q.Encode())
 	if code != http.StatusOK {
-		if e := statusError(op, code); e != nil {
+		if e := statusError(op, code, retryAfter); e != nil {
 			return nil, e
 		}
 	}
@@ -144,7 +144,7 @@ func (c *Client) fetchAnime(ctx context.Context, op, aid string) (*anime, error)
 }
 
 // statusError maps a non-200 HTTP status; nil for code 0 (no response).
-func statusError(op string, code int) error {
+func statusError(op string, code, retryAfter int) error {
 	var sentinel error
 	switch {
 	case code == 0:
@@ -160,7 +160,7 @@ func statusError(op string, code int) error {
 	default:
 		sentinel = fmt.Errorf("%w: status %d", types.ErrUnavailable, code)
 	}
-	return &types.Error{Source: types.SourceAniDB, Op: op, Err: sentinel, Status: code}
+	return &types.Error{Source: types.SourceAniDB, Op: op, Err: sentinel, Status: code, RetryAfter: retryAfter}
 }
 
 // gunzip decompresses by magic bytes; Go only auto-decompresses when it set

@@ -46,11 +46,11 @@ func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGet, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/anime/%s?fields=id,title,main_picture,synopsis,start_date,end_date,status,media_type,num_episodes,average_episode_duration,mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,genres,studios,alternative_titles,related_anime{media_type},related_manga{media_type},start_season,broadcast,source,rating,pictures,background,recommendations,statistics,my_list_status,created_at,updated_at", c.baseURL, url.PathEscape(id))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGet, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGet, Err: err}
 	}
-	return handleResponse(code, body, OpGet)
+	return handleResponse(code, body, OpGet, retryAfter)
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -62,11 +62,11 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 		limit = httpx.DefaultSearchLimit
 	}
 	u := fmt.Sprintf("%s/anime?q=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(query), limit, animeListFields)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpSearch, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: err}
 	}
-	return handleSearchResponse(code, body)
+	return handleSearchResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -78,11 +78,11 @@ func (c *Client) GetManga(ctx context.Context, id string) (*types.Media, error) 
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetManga, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/manga/%s?fields=id,title,main_picture,synopsis,start_date,end_date,status,media_type,num_chapters,num_volumes,mean,rank,popularity,num_list_users,num_scoring_users,num_favorites,nsfw,genres,alternative_titles,related_manga{media_type},related_anime{media_type},authors,serialization,pictures,background,recommendations,statistics,my_list_status,created_at,updated_at", c.baseURL, url.PathEscape(id))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetManga, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetManga, Err: err}
 	}
-	return handleMangaResponse(code, body, OpGetManga)
+	return handleMangaResponse(code, body, OpGetManga, retryAfter)
 }
 
 func (c *Client) SearchManga(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -94,11 +94,11 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 		limit = httpx.DefaultSearchLimit
 	}
 	u := fmt.Sprintf("%s/manga?q=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(query), limit, mangaListFields)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpSearchManga, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: err}
 	}
-	return handleMangaListResponse(code, body, OpSearchManga)
+	return handleMangaListResponse(code, body, OpSearchManga, retryAfter)
 }
 
 func (c *Client) GetMangaByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -119,11 +119,11 @@ func (c *Client) GetSeasonal(ctx context.Context, year int, season string, opts 
 	}
 	offset := (page - 1) * limit
 	u := fmt.Sprintf("%s/anime/season/%d/%s?limit=%d&offset=%d&fields=%s", c.baseURL, year, url.PathEscape(season), limit, offset, animeListFields)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetSeasonal, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetSeasonal, Err: err}
 	}
-	return handleSearchResponse(code, body)
+	return handleSearchResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetRanking(ctx context.Context, rankingType string, opts types.SearchOpts) ([]types.Media, error) {
@@ -132,11 +132,11 @@ func (c *Client) GetRanking(ctx context.Context, rankingType string, opts types.
 		limit = httpx.DefaultSearchLimit
 	}
 	u := fmt.Sprintf("%s/anime/ranking?ranking_type=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(rankingType), limit, animeListFields)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetRanking, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: err}
 	}
-	return handleRankingResponse(code, body)
+	return handleRankingResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetMangaRanking(ctx context.Context, rankingType string, opts types.SearchOpts) ([]types.Media, error) {
@@ -145,11 +145,11 @@ func (c *Client) GetMangaRanking(ctx context.Context, rankingType string, opts t
 		limit = httpx.DefaultSearchLimit
 	}
 	u := fmt.Sprintf("%s/manga/ranking?ranking_type=%s&limit=%d&fields=%s", c.baseURL, url.QueryEscape(rankingType), limit, mangaListFields)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetMangaRanking, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: err}
 	}
-	return handleMangaListResponse(code, body, OpGetMangaRanking)
+	return handleMangaListResponse(code, body, OpGetMangaRanking, retryAfter)
 }
 
 // Non-goal methods (not used in mono-crawler catalog path). Stubbed with ErrNotImplemented.
@@ -185,16 +185,16 @@ func (c *Client) DeleteAnimeListItem(ctx context.Context, animeID int) error {
 	return &types.Error{Source: types.SourceMAL, Op: OpDeleteAnimeListItem, Err: types.ErrNotImplemented}
 }
 
-func handleResponse(code int, body []byte, op string) (*types.Media, error) {
-	a, err := helpers.DecodeJSON[anime](types.SourceMAL, op, code, body)
+func handleResponse(code int, body []byte, op string, retryAfter int) (*types.Media, error) {
+	a, err := helpers.DecodeJSON[anime](types.SourceMAL, op, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
 	return a.toMedia(), nil
 }
 
-func handleSearchResponse(code int, body []byte) ([]types.Media, error) {
-	resp, err := helpers.DecodeJSON[searchResponse](types.SourceMAL, OpSearch, code, body)
+func handleSearchResponse(code int, body []byte, retryAfter int) ([]types.Media, error) {
+	resp, err := helpers.DecodeJSON[searchResponse](types.SourceMAL, OpSearch, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
@@ -205,8 +205,8 @@ func handleSearchResponse(code int, body []byte) ([]types.Media, error) {
 	return results, nil
 }
 
-func handleMangaResponse(code int, body []byte, op string) (*types.Media, error) {
-	m, err := helpers.DecodeJSON[manga](types.SourceMAL, op, code, body)
+func handleMangaResponse(code int, body []byte, op string, retryAfter int) (*types.Media, error) {
+	m, err := helpers.DecodeJSON[manga](types.SourceMAL, op, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
@@ -214,8 +214,8 @@ func handleMangaResponse(code int, body []byte, op string) (*types.Media, error)
 }
 
 // handleMangaListResponse serves manga search and manga ranking (same shape).
-func handleMangaListResponse(code int, body []byte, op string) ([]types.Media, error) {
-	resp, err := helpers.DecodeJSON[mangaSearchResponse](types.SourceMAL, op, code, body)
+func handleMangaListResponse(code int, body []byte, op string, retryAfter int) ([]types.Media, error) {
+	resp, err := helpers.DecodeJSON[mangaSearchResponse](types.SourceMAL, op, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
@@ -226,8 +226,8 @@ func handleMangaListResponse(code int, body []byte, op string) ([]types.Media, e
 	return results, nil
 }
 
-func handleRankingResponse(code int, body []byte) ([]types.Media, error) {
-	resp, err := helpers.DecodeJSON[rankingResponse](types.SourceMAL, OpGetRanking, code, body)
+func handleRankingResponse(code int, body []byte, retryAfter int) ([]types.Media, error) {
+	resp, err := helpers.DecodeJSON[rankingResponse](types.SourceMAL, OpGetRanking, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}

@@ -29,7 +29,7 @@ go vet ./...
 - `models.go` - raw API response structs
 - `mapping.go` - `toMedia()` converts raw → `types.Media`
 
-**`internal/httpx/`** - shared HTTP client with timeout, rate limiting, and a metrics callback. Sources inject the source name into the callback. Accepts a `Transport http.RoundTripper` in `Config` for providers that need custom bot-handling (cloudscraper, CSRF, custom headers). Caps response bodies at `Config.MaxBody` (default `DefaultMaxBody` 32 MiB; over returns `ErrBodyTooLarge`, not retried). Exports shared consts: `DefaultTimeout`, `MaxRetries`, `RetryBackoff`, `DefaultSearchLimit`, `ServerErrThreshold`, `ContentTypeJSON`, `HeaderContentType`, `HeaderAccept`, `HeaderAuthorization`, `BearerPrefix`.
+**`internal/httpx/`** - shared HTTP client with timeout, rate limiting, and a metrics callback. Sources inject the source name into the callback; `op` is the provider `Op*` const passed to `Get(ctx, op, url)`/`Post`/`Do(op, req)`, which also return Retry-After seconds. Accepts a `Transport http.RoundTripper` in `Config` for providers that need custom bot-handling (cloudscraper, CSRF, custom headers). Caps response bodies at `Config.MaxBody` (default `DefaultMaxBody` 32 MiB; over returns `ErrBodyTooLarge`, not retried). Exports shared consts: `DefaultTimeout`, `MaxRetries`, `RetryBackoff`, `DefaultSearchLimit`, `ServerErrThreshold`, `ContentTypeJSON`, `HeaderContentType`, `HeaderAccept`, `HeaderAuthorization`, `BearerPrefix`.
 
 **`internal/helpers/`** - shared mapping helpers. Use these instead of redefining per-provider: `ParseDate`, `RawPayload`, `NormalizeRelation`, `DerefString`, `DerefInt`, `TextContent`, `HasClass`, `TdNodes`.
 
@@ -48,7 +48,7 @@ Do NOT commit without telling the user first. Exception: if the user invokes `/c
 - Empty-input validation returns `types.ErrInvalidInput` before any network call.
 - Tests use `httptest.NewServer` + a `NewWithTestServer(baseURL, cfg)` constructor that bypasses real endpoints.
 - Source status/format strings (e.g. `"RELEASING"` → `"ongoing"`) are normalized in `mapping.go` maps, not in the client.
-- Some providers don't support all methods - they return `types.ErrNotImplemented` (e.g., `Hikka.Get`, `Kaize.Get`, `Nautiljon.Get`, `Otakotaku.Search`, `AniDB.GetManga`, `AniDB.GetByMalID`). Don't treat as a hard error.
+- Some providers don't support all methods - they return `types.ErrNotImplemented` (e.g., `Hikka.Get`, `Kaize.Get`, `Nautiljon.Get`, `Otakotaku.Search`, `Otakotaku.GetByMalID`, `AniDB.GetManga`, `AniDB.GetByMalID`). Don't treat as a hard error.
 - Non-goal endpoints (not in mono-crawler catalog path) are stubbed with `ErrNotImplemented`: MAL forum/user-list/mutation methods, AniList viewer/list/mutation methods. `types/forum.go` (`ForumBoard`, `ForumPost`, `ForumTopic`) and `types/user.go` (`UserInfo`, `MediaListEntry`, `MediaListCollection`) hold the stub types for these.
 - AniDB: needs registered client (`Config.ClientName`/`ClientVersion`, root `AniDBClientName`/`AniDBClientVersion`/`AniDBCacheDir`); empty name returns `ErrInvalidInput`. `Search` reads the anime-titles dump (cached in CacheDir, 24h refresh, 1h retry after failure, `LoadTitles(io.Reader)` preloads). `GetCharacters(ctx, aid)` exists; `Character.Tags` reserved for a future scraper. Rate limit 1 req/2s, no retries. XML structures adapted from go-anidb (see NOTICE).
 - HTML-based providers (`kaize`, `nautiljon`) parse responses with `golang.org/x/net/html`.

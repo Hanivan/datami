@@ -140,7 +140,7 @@ func (c *Client) titleIndex(ctx context.Context) ([]titleRecord, error) {
 }
 
 func (c *Client) downloadTitles(ctx context.Context) ([]byte, error) {
-	code, body, err := c.client.Get(ctx, c.titlesURL)
+	code, body, _, err := c.client.Get(ctx, OpSearch, c.titlesURL)
 	if err != nil {
 		return nil, err
 	}

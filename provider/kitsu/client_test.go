@@ -2,6 +2,7 @@ package kitsu
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -137,5 +138,23 @@ func TestSearchManga(t *testing.T) {
 	}
 	if results[0].Titles[0].Text != "Monster" {
 		t.Fatalf("expected title Monster, got %s", results[0].Titles[0].Text)
+	}
+}
+
+func TestRateLimitedCarriesRetryAfter(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "7")
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{})
+	_, err := c.Get(context.Background(), "1")
+	if !errors.Is(err, types.ErrRateLimited) {
+		t.Fatalf("want ErrRateLimited, got %v", err)
+	}
+	var te *types.Error
+	if !errors.As(err, &te) || te.RetryAfter != 7 {
+		t.Fatalf("RetryAfter = %+v, want 7", te)
 	}
 }

@@ -25,11 +25,11 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 		page = 1
 	}
 	url := fmt.Sprintf("%s/anime/top?page=%d", c.baseURL, page)
-	code, body, err := c.client.Get(ctx, url)
+	code, body, retryAfter, err := c.client.Get(ctx, OpSearch, url)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceKaize, Op: OpSearch, Err: err}
 	}
-	return handleListResponse(code, body, OpSearch)
+	return handleListResponse(code, body, OpSearch, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -40,9 +40,9 @@ func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Me
 	return c.Search(ctx, "", opts)
 }
 
-func handleListResponse(code int, body []byte, op string) ([]types.Media, error) {
+func handleListResponse(code int, body []byte, op string, retryAfter int) ([]types.Media, error) {
 	if code != http.StatusOK {
-		return nil, helpers.StatusError(types.SourceKaize, op, code)
+		return nil, helpers.StatusError(types.SourceKaize, op, code, retryAfter)
 	}
 	items, err := parseKaizeList(body)
 	if err != nil {

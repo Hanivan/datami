@@ -23,11 +23,11 @@ func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGet, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/anime/%s", c.baseURL, url.PathEscape(id))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGet, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGet, Err: err}
 	}
-	return handleResponse(code, body, OpGet)
+	return handleResponse(code, body, OpGet, retryAfter)
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -39,11 +39,11 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 		limit = httpx.DefaultSearchLimit
 	}
 	u := fmt.Sprintf("%s/anime?filter[text]=%s&page[limit]=%d", c.baseURL, url.QueryEscape(query), limit)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpSearch, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: err}
 	}
-	return handleSearchResponse(code, body)
+	return handleSearchResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -55,11 +55,11 @@ func (c *Client) GetManga(ctx context.Context, id string) (*types.Media, error) 
 		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGetManga, Err: types.ErrInvalidInput}
 	}
 	u := fmt.Sprintf("%s/manga/%s", c.baseURL, url.PathEscape(id))
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpGetManga, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGetManga, Err: err}
 	}
-	return handleResponse(code, body, OpGetManga)
+	return handleResponse(code, body, OpGetManga, retryAfter)
 }
 
 func (c *Client) SearchManga(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -71,25 +71,25 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 		limit = httpx.DefaultSearchLimit
 	}
 	u := fmt.Sprintf("%s/manga?filter[text]=%s&page[limit]=%d", c.baseURL, url.QueryEscape(query), limit)
-	code, body, err := c.client.Get(ctx, u)
+	code, body, retryAfter, err := c.client.Get(ctx, OpSearchManga, u)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearchManga, Err: err}
 	}
-	return handleSearchResponse(code, body)
+	return handleSearchResponse(code, body, retryAfter)
 }
 
-func handleResponse(code int, body []byte, op string) (*types.Media, error) {
+func handleResponse(code int, body []byte, op string, retryAfter int) (*types.Media, error) {
 	resp, err := helpers.DecodeJSON[struct {
 		Data anime `json:"data"`
-	}](types.SourceKitsu, op, code, body)
+	}](types.SourceKitsu, op, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}
 	return resp.Data.toMedia(), nil
 }
 
-func handleSearchResponse(code int, body []byte) ([]types.Media, error) {
-	resp, err := helpers.DecodeJSON[searchResponse](types.SourceKitsu, OpSearch, code, body)
+func handleSearchResponse(code int, body []byte, retryAfter int) ([]types.Media, error) {
+	resp, err := helpers.DecodeJSON[searchResponse](types.SourceKitsu, OpSearch, code, retryAfter, body)
 	if err != nil {
 		return nil, err
 	}

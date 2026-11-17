@@ -68,6 +68,6 @@ go test ./types/ ./internal/helpers/ ./provider/anilist/ ./provider/anidb/
 ## Gotchas
 
 - `Status` is 0 for validation, parse and transport errors.
-- `RetryAfter` is set only by AniList (via `DoWithRetryAfter`); other providers use `Do` and discard it.
+- `RetryAfter` is set by every provider on a non-200 response when the server sends a delta-seconds `Retry-After`; 0 otherwise.
 - After 5xx retries are exhausted the error is a plain wrapped error from httpx; sentinel mapping applies only when a non-5xx status is returned (AniDB also maps the leftover 5xx status).
 - 403 differs per source: keyless and AniList = rate limited, MAL/Kitsu = auth failed, AniDB = auth failed.

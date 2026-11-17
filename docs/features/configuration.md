@@ -19,10 +19,9 @@
 | `AniDBClientVersion` | 0 | `anidb.Config.ClientVersion`; with a name set, `anidb.New` rejects `<= 0` with `ErrInvalidInput` |
 | `AniDBCacheDir` | "" (becomes `os.UserCacheDir()/datami/anidb`) | `anidb.Config.CacheDir`, titles dump cache |
 | `Timeout` | 10s | all providers; per-request `http.Client.Timeout` |
-| `RateLimitRate` | unused | declared in `Config` but `New` never reads it; rates are hardcoded per provider (see [http-client.md](http-client.md)) |
 | `Metrics` | nil | all providers |
 
-`MetricsHook` is `func(source string, op string, dur time.Duration, err error)` (`types/media.go`). `source` is one of `types.SourceMAL` ("mal"), `SourceAniList` ("anilist"), `SourceAniDB` ("anidb"), `SourceKitsu`, `SourceHikka`, `SourceKaize`, `SourceNautiljon`, `SourceOtakotaku` (lowercase names). `op` is the HTTP method ("GET"/"POST"), not the `Op*` constant. Fires per attempt, see [http-client.md](http-client.md).
+`MetricsHook` is `func(source string, op string, dur time.Duration, err error)` (`types/media.go`). `source` is one of `types.SourceMAL` ("mal"), `SourceAniList` ("anilist"), `SourceAniDB` ("anidb"), `SourceKitsu`, `SourceHikka`, `SourceKaize`, `SourceNautiljon`, `SourceOtakotaku` (lowercase names). `op` is the provider operation name (the provider `Op*` const, e.g. `mal.OpGet`, `anilist.OpSearch`). Rates are hardcoded per provider, see [http-client.md](http-client.md). Fires per attempt, see [http-client.md](http-client.md).
 
 Per-provider direct constructors (packages under `provider/`): `New(cfg) (*Client, error)` hits the real endpoint; `NewWithTestServer(baseURL, cfg)` points at a test server (AniDB: `NewWithTestServer(apiURL, titlesURL, cfg)`, empty `ClientName` becomes "test"/1). Each provider `Config` has `Timeout` and `Metrics` (plain func type, same signature); extras: mal `ClientID`, anilist `Token`/`DescriptionAsHTML`, anidb `ClientName`/`ClientVersion`/`CacheDir`. Provider docs: [mal.md](mal.md), [anilist.md](anilist.md), [anidb.md](anidb.md), [kitsu.md](kitsu.md), [hikka.md](hikka.md), [kaize.md](kaize.md), [nautiljon.md](nautiljon.md), [otakotaku.md](otakotaku.md).
 
@@ -54,7 +53,6 @@ Use `NewWithTestServer` with `httptest.NewServer`.
 
 ## Gotchas
 
-- `Config.RateLimitRate` does nothing.
 - `datami.MetricsHook` is a named type; provider `Config.Metrics` is the unnamed func type, assignable from it.
 - Missing `MALClientID` is not validated at `New`; MAL will answer 401/403.
 - AniDB cache dir lookup failure makes `datami.New` return an error (only when a client name is set).

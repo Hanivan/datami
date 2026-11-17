@@ -25,11 +25,11 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 		page = 1
 	}
 	url := fmt.Sprintf("%s/animes/?dbt=%d", c.baseURL, (page-1)*15)
-	code, body, err := c.client.Get(ctx, url)
+	code, body, retryAfter, err := c.client.Get(ctx, OpSearch, url)
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceNautiljon, Op: OpSearch, Err: err}
 	}
-	return handleListResponse(code, body, OpSearch)
+	return handleListResponse(code, body, OpSearch, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -40,9 +40,9 @@ func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Me
 	return c.Search(ctx, "", opts)
 }
 
-func handleListResponse(code int, body []byte, op string) ([]types.Media, error) {
+func handleListResponse(code int, body []byte, op string, retryAfter int) ([]types.Media, error) {
 	if code != http.StatusOK {
-		return nil, helpers.StatusError(types.SourceNautiljon, op, code)
+		return nil, helpers.StatusError(types.SourceNautiljon, op, code, retryAfter)
 	}
 	items, err := parseNautiljonList(body)
 	if err != nil {

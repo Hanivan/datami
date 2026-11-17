@@ -60,4 +60,3 @@ Fixed `httpx.Config`: `Rate: 2` req/s, `Burst` 1, 3 total attempts (`httpx.MaxRe
 - The "MAL id" in `*ByMalID` is the same id as `Get`; those exist for interface symmetry with AniList/AniDB.
 - Manga list endpoints do not return `num_episodes`; asking for it yields no error and no value.
 - Characters capped at 100 per anime (no pagination).
-- `RateLimitRate` in root `Config` is not read by `datami.New`; rate is fixed per provider.

@@ -8,10 +8,10 @@ import (
 	"time"
 )
 
-// TestDoWithRetryAfterSurfacesHeader pins that a 429's Retry-After reaches the
+// TestDoSurfacesHeader pins that a 429's Retry-After reaches the
 // caller. Without it a backoff has to guess how long the server wants us gone,
 // and guessing short keeps the cooldown alive indefinitely.
-func TestDoWithRetryAfterSurfacesHeader(t *testing.T) {
+func TestDoSurfacesHeader(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Retry-After", "42")
 		w.WriteHeader(http.StatusTooManyRequests)
@@ -20,7 +20,7 @@ func TestDoWithRetryAfterSurfacesHeader(t *testing.T) {
 
 	c := New(Config{Timeout: 5 * time.Second})
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	code, _, retryAfter, err := c.DoWithRetryAfter(req)
+	code, _, retryAfter, err := c.Do("op", req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestDoWithRetryAfterSurfacesHeader(t *testing.T) {
 }
 
 // A response without the header reports 0, not an error: most responses carry none.
-func TestDoWithRetryAfterAbsent(t *testing.T) {
+func TestDoAbsent(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -41,7 +41,7 @@ func TestDoWithRetryAfterAbsent(t *testing.T) {
 
 	c := New(Config{Timeout: 5 * time.Second})
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	_, _, retryAfter, err := c.DoWithRetryAfter(req)
+	_, _, retryAfter, err := c.Do("op", req)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestDoWithRetryAfterAbsent(t *testing.T) {
 	}
 }
 
-// Do keeps its signature: the 24 existing call sites must not have to change.
+// Do returns status and body alongside retryAfter.
 func TestDoStillWorks(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -60,7 +60,7 @@ func TestDoStillWorks(t *testing.T) {
 
 	c := New(Config{Timeout: 5 * time.Second})
 	req, _ := http.NewRequestWithContext(context.Background(), http.MethodGet, srv.URL, nil)
-	code, body, err := c.Do(req)
+	code, body, _, err := c.Do("op", req)
 	if err != nil || code != http.StatusOK || string(body) != `{"ok":true}` {
 		t.Fatalf("Do regressed: code=%d body=%q err=%v", code, body, err)
 	}

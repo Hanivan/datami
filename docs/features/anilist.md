@@ -31,7 +31,7 @@ Status mapping (`statusErr` in `client.go`, not `helpers.StatusError`):
 | 400 | `ErrInvalidInput` |
 | other | `status <code>` |
 
-`types.Error` carries `Status` and `RetryAfter` (seconds, from `Retry-After`, delta-seconds form only; 0 if absent) via `DoWithRetryAfter`.
+`types.Error` carries `Status` and `RetryAfter` (seconds, from `Retry-After`, delta-seconds form only; 0 if absent) via `httpx` `Do`.
 
 ## Config
 

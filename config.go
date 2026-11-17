@@ -43,6 +43,5 @@ type Config struct {
 	AniDBClientVersion int
 	AniDBCacheDir      string
 	Timeout            time.Duration
-	RateLimitRate      float64
 	Metrics            MetricsHook
 }

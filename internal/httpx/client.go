@@ -95,37 +95,30 @@ func New(cfg Config) *Client {
 	}
 }
 
-func (c *Client) Get(ctx context.Context, url string) (int, []byte, error) {
+func (c *Client) Get(ctx context.Context, op, url string) (int, []byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return 0, nil, fmt.Errorf("new request: %w", err)
+		return 0, nil, 0, fmt.Errorf("new request: %w", err)
 	}
-	return c.Do(req)
+	return c.Do(op, req)
 }
 
-func (c *Client) Post(ctx context.Context, url string, body []byte, headers map[string]string) (int, []byte, error) {
+func (c *Client) Post(ctx context.Context, op, url string, body []byte, headers map[string]string) (int, []byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
-		return 0, nil, fmt.Errorf("new request: %w", err)
+		return 0, nil, 0, fmt.Errorf("new request: %w", err)
 	}
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
-	return c.Do(req)
+	return c.Do(op, req)
 }
 
-// Do performs the request and returns the status and body. Retry-After, when
-// the server sends one, is discarded — use DoWithRetryAfter to see it.
-func (c *Client) Do(req *http.Request) (int, []byte, error) {
-	code, body, _, err := c.DoWithRetryAfter(req)
-	return code, body, err
-}
-
-// DoWithRetryAfter is Do plus the response's Retry-After value in seconds (0
-// when absent or unparseable). A 429 or 503 answers with the cooldown the
-// server actually wants; honouring it beats guessing a backoff, since guessing
-// short keeps the rate limit alive.
-func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
+// Do performs the request and returns status, body and the response's
+// Retry-After in seconds (0 when absent or unparseable). op is the provider
+// operation name reported to the metrics callback. A 429 or 503 answers with
+// the cooldown the server wants; honouring it beats guessing a backoff.
+func (c *Client) Do(op string, req *http.Request) (int, []byte, int, error) {
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
 	}
@@ -146,7 +139,7 @@ func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
 		if err != nil {
 			lastErr = err
 			if c.metrics != nil {
-				c.metrics(req.Method, time.Since(start), err)
+				c.metrics(op, time.Since(start), err)
 			}
 			continue
 		}
@@ -156,7 +149,7 @@ func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
 			readErr = fmt.Errorf("%w: limit %d bytes", ErrBodyTooLarge, c.maxBody)
 		}
 		if c.metrics != nil {
-			c.metrics(req.Method, time.Since(start), readErr)
+			c.metrics(op, time.Since(start), readErr)
 		}
 		if errors.Is(readErr, ErrBodyTooLarge) {
 			return resp.StatusCode, nil, 0, readErr

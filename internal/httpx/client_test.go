@@ -18,7 +18,7 @@ func TestClientGetSuccess(t *testing.T) {
 	defer srv.Close()
 
 	c := New(Config{Timeout: 5 * time.Second})
-	code, body, err := c.Get(context.Background(), srv.URL)
+	code, body, _, err := c.Get(context.Background(), "op", srv.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestClientGetNotFound(t *testing.T) {
 	defer srv.Close()
 
 	c := New(Config{Timeout: 5 * time.Second})
-	code, _, err := c.Get(context.Background(), srv.URL)
+	code, _, _, err := c.Get(context.Background(), "op", srv.URL)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -54,11 +54,11 @@ func TestMaxBody(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, body, err := New(Config{MaxBody: 10}).Get(context.Background(), srv.URL); err != nil || len(body) != 10 {
+	if _, body, _, err := New(Config{MaxBody: 10}).Get(context.Background(), "op", srv.URL); err != nil || len(body) != 10 {
 		t.Fatalf("at cap: body %q, err %v", body, err)
 	}
 	hits = 0
-	_, _, err := New(Config{MaxBody: 9}).Get(context.Background(), srv.URL)
+	_, _, _, err := New(Config{MaxBody: 9}).Get(context.Background(), "op", srv.URL)
 	if !errors.Is(err, ErrBodyTooLarge) {
 		t.Fatalf("over cap: err = %v, want ErrBodyTooLarge", err)
 	}
@@ -79,7 +79,7 @@ func TestMaxRetriesOneSendsOneRequest(t *testing.T) {
 	srv := serve500(&hits)
 	defer srv.Close()
 	c := New(Config{MaxRetries: 1})
-	code, _, err := c.Get(context.Background(), srv.URL)
+	code, _, _, err := c.Get(context.Background(), "op", srv.URL)
 	if err == nil {
 		t.Fatal("want error")
 	}
@@ -96,7 +96,7 @@ func TestDefaultRetriesStillThree(t *testing.T) {
 	srv := serve500(&hits)
 	defer srv.Close()
 	c := New(Config{})
-	code, _, err := c.Get(context.Background(), srv.URL)
+	code, _, _, err := c.Get(context.Background(), "op", srv.URL)
 	if err == nil {
 		t.Fatal("want error")
 	}
@@ -116,11 +116,24 @@ func TestLimiterAppliesPerAttempt(t *testing.T) {
 	// Wait makes 2 attempts take >= ~500ms.
 	c := New(Config{Rate: 2, Burst: 1, MaxRetries: 2})
 	start := time.Now()
-	c.Get(context.Background(), srv.URL)
+	c.Get(context.Background(), "op", srv.URL)
 	if elapsed := time.Since(start); elapsed < 450*time.Millisecond {
 		t.Fatalf("elapsed = %v, want >= 450ms", elapsed)
 	}
 	if n := atomic.LoadInt32(&hits); n != 2 {
 		t.Fatalf("hits = %d, want 2", n)
+	}
+}
+
+func TestMetricsReceivesOp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	defer srv.Close()
+	var got string
+	c := New(Config{Metrics: func(op string, _ time.Duration, _ error) { got = op }})
+	if _, _, _, err := c.Get(context.Background(), "getanime", srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	if got != "getanime" {
+		t.Fatalf("metrics op = %q, want getanime", got)
 	}
 }
