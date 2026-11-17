@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<anime id="2" restricted="false">
+	<type>TV Series</type>
+	<episodecount>12</episodecount>
+	<startdate>2026-10</startdate>
+	<titles>
+		<title xml:lang="x-jat" type="main">Partial Show</title>
+	</titles>
+</anime>

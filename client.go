@@ -43,12 +43,18 @@ func New(cfg Config) (*Client, error) {
 		return nil, fmt.Errorf("anilist: %w", err)
 	}
 
-	anidbClient, err := anidb.New(anidb.Config{
-		Timeout: timeout,
-		Metrics: metrics,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("anidb: %w", err)
+	anidbClient := anidb.Unconfigured()
+	if cfg.AniDBClientName != "" {
+		anidbClient, err = anidb.New(anidb.Config{
+			ClientName:    cfg.AniDBClientName,
+			ClientVersion: cfg.AniDBClientVersion,
+			CacheDir:      cfg.AniDBCacheDir,
+			Timeout:       timeout,
+			Metrics:       metrics,
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	kitsuClient, err := kitsu.New(kitsu.Config{

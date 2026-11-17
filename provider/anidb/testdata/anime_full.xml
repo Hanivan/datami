@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<anime id="1" restricted="false">
+	<type>TV Series</type>
+	<episodecount>26</episodecount>
+	<startdate>1998-04-03</startdate>
+	<enddate>1998-06-26</enddate>
+	<titles>
+		<title xml:lang="x-jat" type="main">Seikai no Monshou</title>
+		<title xml:lang="en" type="official">Crest of the Stars</title>
+		<title xml:lang="ja" type="official">星界の紋章</title>
+		<title xml:lang="x-jat" type="official">Seikai no Monshou</title>
+		<title xml:lang="en" type="synonym">Seikai no Monsho</title>
+		<title xml:lang="x-jat" type="short">CotS</title>
+	</titles>
+	<relatedanime>
+		<anime id="4" type="Sequel">Seikai no Senki</anime>
+		<anime id="6" type="Alternative Setting">Seikai no Danshou: Tanjou</anime>
+		<anime id="1623" type="Full Story">Seikai no Monshou Tokubetsuhen</anime>
+	</relatedanime>
+	<url>http://www.sunrise-inc.co.jp/seikai/</url>
+	<creators>
+		<name id="4303" type="Music">Hattori Katsuhisa</name>
+		<name id="4234" type="Direction">Nagaoka Yasuchika</name>
+		<name id="3313" type="Animation Work">Sunrise</name>
+	</creators>
+	<description>Space opera.</description>
+	<ratings>
+		<permanent count="4853">8.5</permanent>
+		<temporary count="4887">8.2</temporary>
+		<review count="12">8.70</review>
+	</ratings>
+	<picture>440.jpg</picture>
+	<resources>
+		<resource type="1">
+			<externalentity>
+				<identifier>13</identifier>
+			</externalentity>
+		</resource>
+		<resource type="2">
+			<externalentity>
+				<identifier>1</identifier>
+			</externalentity>
+		</resource>
+		<resource type="99">
+			<externalentity>
+				<identifier>777</identifier>
+			</externalentity>
+		</resource>
+	</resources>
+	<tags>
+		<tag id="36" parentid="2607" weight="600" localspoiler="false" globalspoiler="false" verified="true" update="2018-01-21">
+			<name>military</name>
+		</tag>
+		<tag id="2604" weight="400" localspoiler="false" globalspoiler="false" verified="true" update="2018-01-21">
+			<name>space</name>
+		</tag>
+		<tag id="2799" weight="100" localspoiler="false" globalspoiler="false" verified="true" update="2018-01-21">
+			<name>novel</name>
+		</tag>
+	</tags>
+	<characters>
+		<character id="28" type="main character in" update="2012-07-25">
+			<rating votes="1196">9.15</rating>
+			<name>Abriel Nei Debrusc Borl Paryun Lafiel</name>
+			<gender>female</gender>
+			<charactertype id="1">Character</charactertype>
+			<description>Princess of the Abh.</description>
+			<picture>14304.jpg</picture>
+			<seiyuu id="12" picture="184301.jpg">Kawasumi Ayako</seiyuu>
+		</character>
+		<character id="29" type="secondary cast in" update="2012-07-25">
+			<name>Linn Syun-Rock Jint</name>
+			<gender>male</gender>
+			<charactertype id="1">Character</charactertype>
+			<description>Count of Hyde.</description>
+			<picture>14305.jpg</picture>
+		</character>
+		<character id="30" type="appears in" update="2012-07-25">
+			<name>Abh Empire</name>
+			<charactertype id="3">Organization</charactertype>
+		</character>
+	</characters>
+</anime>

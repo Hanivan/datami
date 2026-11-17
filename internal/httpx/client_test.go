@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -41,5 +42,63 @@ func TestClientGetNotFound(t *testing.T) {
 	}
 	if code != http.StatusNotFound {
 		t.Fatalf("expected 404, got %d", code)
+	}
+}
+
+func serve500(hits *int32) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(hits, 1)
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+}
+
+func TestMaxRetriesOneSendsOneRequest(t *testing.T) {
+	var hits int32
+	srv := serve500(&hits)
+	defer srv.Close()
+	c := New(Config{MaxRetries: 1})
+	code, _, err := c.Get(context.Background(), srv.URL)
+	if err == nil {
+		t.Fatal("want error")
+	}
+	if code != 500 {
+		t.Fatalf("code = %d, want 500", code)
+	}
+	if hits != 1 {
+		t.Fatalf("hits = %d, want 1", hits)
+	}
+}
+
+func TestDefaultRetriesStillThree(t *testing.T) {
+	var hits int32
+	srv := serve500(&hits)
+	defer srv.Close()
+	c := New(Config{})
+	code, _, err := c.Get(context.Background(), srv.URL)
+	if err == nil {
+		t.Fatal("want error")
+	}
+	if code != 500 {
+		t.Fatalf("code = %d, want 500", code)
+	}
+	if hits != 3 {
+		t.Fatalf("hits = %d, want 3", hits)
+	}
+}
+
+func TestLimiterAppliesPerAttempt(t *testing.T) {
+	var hits int32
+	srv := serve500(&hits)
+	defer srv.Close()
+	// 500ms limiter interval beats the 100ms backoff, so only a per-attempt
+	// Wait makes 2 attempts take >= ~500ms.
+	c := New(Config{Rate: 2, Burst: 1, MaxRetries: 2})
+	start := time.Now()
+	c.Get(context.Background(), srv.URL)
+	if elapsed := time.Since(start); elapsed < 450*time.Millisecond {
+		t.Fatalf("elapsed = %v, want >= 450ms", elapsed)
+	}
+	if n := atomic.LoadInt32(&hits); n != 2 {
+		t.Fatalf("hits = %d, want 2", n)
 	}
 }

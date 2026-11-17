@@ -24,3 +24,13 @@ func TestNewClient(t *testing.T) {
 		t.Fatal("Kitsu client nil")
 	}
 }
+
+func TestNewClientAniDBConfigured(t *testing.T) {
+	c, err := New(Config{AniDBClientName: "x", AniDBClientVersion: 1})
+	if err != nil {
+		t.Fatalf("New failed: %v", err)
+	}
+	if c.AniDB == nil {
+		t.Fatal("AniDB client nil")
+	}
+}

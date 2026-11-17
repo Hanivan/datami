@@ -48,8 +48,9 @@ Do NOT commit without telling the user first. Exception: if the user invokes `/c
 - Empty-input validation returns `types.ErrInvalidInput` before any network call.
 - Tests use `httptest.NewServer` + a `NewWithTestServer(baseURL, cfg)` constructor that bypasses real endpoints.
 - Source status/format strings (e.g. `"RELEASING"` → `"ongoing"`) are normalized in `mapping.go` maps, not in the client.
-- Some providers don't support all methods - they return `types.ErrNotImplemented` (e.g., `Hikka.Get`, `Kaize.Get`, `Nautiljon.Get`, `Otakotaku.Search`, `AniDB.GetManga`). Don't treat as a hard error.
+- Some providers don't support all methods - they return `types.ErrNotImplemented` (e.g., `Hikka.Get`, `Kaize.Get`, `Nautiljon.Get`, `Otakotaku.Search`, `AniDB.GetManga`, `AniDB.GetByMalID`). Don't treat as a hard error.
 - Non-goal endpoints (not in mono-crawler catalog path) are stubbed with `ErrNotImplemented`: MAL forum/user-list/mutation methods, AniList viewer/list/mutation methods. `types/character.go` has stub types (`ForumBoard`, `ForumPost`, `ForumTopic`, `UserInfo`, `MediaListEntry`, `MediaListCollection`) for these.
+- AniDB: needs registered client (`Config.ClientName`/`ClientVersion`, root `AniDBClientName`/`AniDBClientVersion`/`AniDBCacheDir`); empty name returns `ErrInvalidInput`. `Search` reads the anime-titles dump (cached in CacheDir, 24h refresh, 1h retry after failure, `LoadTitles(io.Reader)` preloads). `GetCharacters(ctx, aid)` exists; `Character.Tags` reserved for a future scraper. Rate limit 1 req/2s, no retries. XML structures adapted from go-anidb (see NOTICE).
 - HTML-based providers (`kaize`, `nautiljon`) parse responses with `golang.org/x/net/html`.
 
 ## Quality

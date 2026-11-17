@@ -27,6 +27,9 @@ type Character struct {
 	// VoiceActors are the character's VAs for the media it was fetched with
 	// (AniList only; MAL's character roster carries none).
 	VoiceActors []VoiceActor `json:"voice_actors,omitempty"`
+	Gender      string       `json:"gender,omitempty"`
+	// Tags is filled only by sources that expose character tags (AniDB scraper, future).
+	Tags []string `json:"tags,omitempty"`
 }
 
 // VoiceActor is one voice credit on a Character, with the language it was

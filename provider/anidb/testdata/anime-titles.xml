@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<animetitles>
+<anime aid="23">
+<title xml:lang="x-jat" type="main">Cowboy Bebop</title>
+<title xml:lang="ja" type="official">カウボーイビバップ</title>
+<title xml:lang="en" type="official">Cowboy Bebop</title>
+</anime>
+<anime aid="5">
+<title xml:lang="x-jat" type="main">Cowboy Bebop: Tengoku no Tobira</title>
+<title xml:lang="en" type="official">Cowboy Bebop: The Movie</title>
+<title xml:lang="en" type="synonym">Knockin' on Heaven's Door</title>
+</anime>
+<anime aid="4">
+<title xml:lang="x-jat" type="main">Hoshi no Koe</title>
+<title xml:lang="en" type="official">Voices of a Distant Star</title>
+</anime>
+<anime aid="3">
+<title xml:lang="x-jat" type="main">Shin Seiki Evangelion</title>
+<title xml:lang="en" type="official">Neon Genesis Evangelion</title>
+<title xml:lang="x-jat" type="short">NGE</title>
+</anime>
+<anime aid="6">
+<title xml:lang="x-jat" type="main">Seikai no Monshou</title>
+<title xml:lang="en" type="official">Crest of the Stars</title>
+</anime>
+<anime aid="11370">
+<title xml:lang="x-jat" type="main">Re:Zero kara Hajimeru Isekai Seikatsu</title>
+<title xml:lang="en" type="official">Re:ZERO -Starting Life in Another World-</title>
+<title xml:lang="ja" type="official">Re:ゼロから始める異世界生活</title>
+</anime>
+<anime aid="9541">
+<title xml:lang="x-jat" type="main">Shingeki no Kyojin</title>
+<title xml:lang="en" type="official">Attack on Titan</title>
+</anime>
+<anime aid="69">
+<title xml:lang="x-jat" type="main">One Piece</title>
+<title xml:lang="x-jat" type="short">OP</title>
+</anime>
+</animetitles>

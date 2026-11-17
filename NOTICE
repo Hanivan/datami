@@ -1,2 +1,6 @@
 unimeki includes code derived from animeApi (https://github.com/nattadasu/animeApi),
 Copyright 2023-2026 Sultan Iskandar Maulana, used under MIT License.
+
+The AniDB provider (provider/anidb) includes XML structures and API constants adapted from
+go-anidb (https://github.com/Jessidhia/go-anidb), Copyright (c) 2014 Diogo Franco,
+used under MIT License.

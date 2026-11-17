@@ -3,6 +3,7 @@ package httpx
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -26,6 +27,10 @@ const (
 	BearerPrefix        = "Bearer "
 )
 
+// ErrLimiterWait marks a failed rate limiter wait: no request was sent. The
+// limiter or ctx error stays in the chain.
+var ErrLimiterWait = errors.New("httpx: rate limiter wait")
+
 type Config struct {
 	Timeout   time.Duration
 	Rate      float64
@@ -33,13 +38,16 @@ type Config struct {
 	Metrics   func(op string, dur time.Duration, err error)
 	Transport http.RoundTripper
 	Headers   map[string]string
+	// MaxRetries is total attempts per request; 0 uses the MaxRetries const.
+	MaxRetries int
 }
 
 type Client struct {
-	base    *http.Client
-	limiter *rate.Limiter
-	metrics func(op string, dur time.Duration, err error)
-	headers map[string]string
+	base       *http.Client
+	limiter    *rate.Limiter
+	metrics    func(op string, dur time.Duration, err error)
+	headers    map[string]string
+	maxRetries int
 }
 
 func New(cfg Config) *Client {
@@ -55,6 +63,10 @@ func New(cfg Config) *Client {
 	if cfg.Rate > 0 {
 		limiter = rate.NewLimiter(rate.Limit(cfg.Rate), burst)
 	}
+	maxRetries := cfg.MaxRetries
+	if maxRetries <= 0 {
+		maxRetries = MaxRetries
+	}
 	base := &http.Client{
 		Timeout: timeout,
 	}
@@ -62,10 +74,11 @@ func New(cfg Config) *Client {
 		base.Transport = cfg.Transport
 	}
 	return &Client{
-		base:    base,
-		limiter: limiter,
-		metrics: cfg.Metrics,
-		headers: cfg.Headers,
+		base:       base,
+		limiter:    limiter,
+		metrics:    cfg.Metrics,
+		headers:    cfg.Headers,
+		maxRetries: maxRetries,
 	}
 }
 
@@ -103,15 +116,17 @@ func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
 	}
-	if c.limiter != nil {
-		if err := c.limiter.Wait(req.Context()); err != nil {
-			return 0, nil, 0, fmt.Errorf("rate limiter: %w", err)
-		}
-	}
 	var lastErr error
-	for attempt := 0; attempt < MaxRetries; attempt++ {
+	var lastStatus int
+	var lastBody []byte
+	for attempt := 0; attempt < c.maxRetries; attempt++ {
 		if attempt > 0 {
 			time.Sleep(time.Duration(attempt) * RetryBackoff)
+		}
+		if c.limiter != nil {
+			if err := c.limiter.Wait(req.Context()); err != nil {
+				return 0, nil, 0, fmt.Errorf("%w: %w", ErrLimiterWait, err)
+			}
 		}
 		start := time.Now()
 		resp, err := c.base.Do(req)
@@ -133,11 +148,12 @@ func (c *Client) DoWithRetryAfter(req *http.Request) (int, []byte, int, error) {
 		}
 		if resp.StatusCode >= ServerErrThreshold {
 			lastErr = fmt.Errorf("server error: %d", resp.StatusCode)
+			lastStatus, lastBody = resp.StatusCode, body
 			continue
 		}
 		return resp.StatusCode, body, retryAfterSeconds(resp), nil
 	}
-	return 0, nil, 0, fmt.Errorf("after %d attempts: %w", MaxRetries, lastErr)
+	return lastStatus, lastBody, 0, fmt.Errorf("after %d attempts: %w", c.maxRetries, lastErr)
 }
 
 // retryAfterSeconds reads the Retry-After header. Only the delta-seconds form

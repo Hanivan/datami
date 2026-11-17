@@ -1,47 +1,98 @@
 package anidb
 
 import (
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Hanivan/datami/internal/httpx"
+	"github.com/Hanivan/datami/types"
+)
+
+const (
+	defaultAPIURL    = "http://api.anidb.net:9001/httpapi"
+	defaultTitlesURL = "http://anidb.net/api/anime-titles.xml.gz"
 )
 
 type Config struct {
-	Timeout time.Duration
-	Metrics func(source string, op string, dur time.Duration, err error)
+	// ClientName is a registered AniDB HTTP client name. Required.
+	ClientName string
+	// ClientVersion is the registered client version. Required, > 0.
+	ClientVersion int
+	// CacheDir holds the titles dump; default os.UserCacheDir()/datami/anidb.
+	CacheDir string
+	Timeout  time.Duration
+	Metrics  func(source string, op string, dur time.Duration, err error)
 }
 
 type Client struct {
-	baseURL string
-	client  *httpx.Client
-	metrics func(source string, op string, dur time.Duration, err error)
+	apiURL        string
+	titlesURL     string
+	clientName    string
+	clientVersion int
+	cacheDir      string
+	client        *httpx.Client
+	now           func() time.Time
+	metrics       func(source, op string, dur time.Duration, err error)
+	titles        titlesState
+	// unconfigured makes every method fail with ErrInvalidInput, no network.
+	unconfigured bool
 }
 
+// New returns ErrInvalidInput when ClientName is empty or ClientVersion <= 0.
 func New(cfg Config) (*Client, error) {
-	return newClient("http://api.anidb.net:9001/httpapi", cfg)
+	if cfg.ClientName == "" || cfg.ClientVersion <= 0 {
+		return nil, &types.Error{Source: types.SourceAniDB, Op: OpNew, Err: types.ErrInvalidInput}
+	}
+	if cfg.CacheDir == "" {
+		dir, err := os.UserCacheDir()
+		if err != nil {
+			return nil, &types.Error{Source: types.SourceAniDB, Op: OpNew, Err: err}
+		}
+		cfg.CacheDir = filepath.Join(dir, "datami", "anidb")
+	}
+	return newClient(defaultAPIURL, defaultTitlesURL, cfg), nil
 }
 
-func NewWithTestServer(baseURL string, cfg Config) *Client {
-	c, _ := newClient(baseURL, cfg)
-	return c
+// Unconfigured returns a client whose every method returns ErrInvalidInput
+// without touching the network. Used when no AniDB client is registered.
+func Unconfigured() *Client {
+	return &Client{unconfigured: true, now: time.Now, titles: newTitlesState()}
 }
 
-func newClient(baseURL string, cfg Config) (*Client, error) {
+// NewWithTestServer points the client at test URLs. Empty ClientName is
+// replaced by "test"/1 so tests need not set it.
+func NewWithTestServer(apiURL, titlesURL string, cfg Config) *Client {
+	if cfg.ClientName == "" {
+		cfg.ClientName, cfg.ClientVersion = "test", 1
+	}
+	return newClient(apiURL, titlesURL, cfg)
+}
+
+func newClient(apiURL, titlesURL string, cfg Config) *Client {
 	timeout := cfg.Timeout
 	if timeout == 0 {
-		timeout = 10 * time.Second
+		timeout = httpx.DefaultTimeout
 	}
 	return &Client{
-		baseURL: baseURL,
+		apiURL:        apiURL,
+		titlesURL:     titlesURL,
+		clientName:    cfg.ClientName,
+		clientVersion: cfg.ClientVersion,
+		cacheDir:      cfg.CacheDir,
+		now:           time.Now,
+		metrics:       cfg.Metrics,
+		titles:        newTitlesState(),
 		client: httpx.New(httpx.Config{
-			Timeout: timeout,
-			Rate:    0.2,
+			Timeout:    timeout,
+			Rate:       0.5,
+			Burst:      1,
+			MaxRetries: 1,
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
-					cfg.Metrics("anidb", op, dur, err)
+					cfg.Metrics(types.SourceAniDB, op, dur, err)
 				}
 			},
 		}),
-		metrics: cfg.Metrics,
-	}, nil
+	}
 }

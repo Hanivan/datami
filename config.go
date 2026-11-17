@@ -34,7 +34,12 @@ type Config struct {
 	AniListToken string
 	// AniListDescriptionAsHTML: see anilist.Config.DescriptionAsHTML.
 	AniListDescriptionAsHTML *bool
-	Timeout                  time.Duration
-	RateLimitRate            float64
-	Metrics                  MetricsHook
+	// AniDB registered HTTP client. Empty AniDBClientName leaves AniDB
+	// unconfigured: its calls return ErrInvalidInput.
+	AniDBClientName    string
+	AniDBClientVersion int
+	AniDBCacheDir      string
+	Timeout            time.Duration
+	RateLimitRate      float64
+	Metrics            MetricsHook
 }
