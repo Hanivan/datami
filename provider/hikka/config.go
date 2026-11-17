@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Hanivan/datami/internal/httpx"
+	"github.com/Hanivan/datami/types"
 )
 
 type Config struct {
@@ -37,7 +38,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 			Rate:    2,
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
-					cfg.Metrics("hikka", op, dur, err)
+					cfg.Metrics(types.SourceHikka, op, dur, err)
 				}
 			},
 		}),

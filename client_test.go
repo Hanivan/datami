@@ -23,6 +23,18 @@ func TestNewClient(t *testing.T) {
 	if c.Kitsu == nil {
 		t.Fatal("Kitsu client nil")
 	}
+	if c.Hikka == nil {
+		t.Fatal("Hikka client nil")
+	}
+	if c.Kaize == nil {
+		t.Fatal("Kaize client nil")
+	}
+	if c.Nautiljon == nil {
+		t.Fatal("Nautiljon client nil")
+	}
+	if c.Otakotaku == nil {
+		t.Fatal("Otakotaku client nil")
+	}
 }
 
 func TestNewClientAniDBConfigured(t *testing.T) {

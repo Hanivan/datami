@@ -2,6 +2,7 @@ package kaize
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -44,5 +45,21 @@ func TestGetNotImplemented(t *testing.T) {
 	_, err := c.Get(context.Background(), "1")
 	if err == nil {
 		t.Fatal("expected error for Get")
+	}
+}
+
+func TestSearchForbidden(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second})
+	_, err := c.Search(context.Background(), "", types.SearchOpts{Page: 1})
+	if !errors.Is(err, types.ErrRateLimited) {
+		t.Fatalf("want ErrRateLimited (WAF block), got %v", err)
+	}
+	if types.StatusOf(err) != http.StatusForbidden {
+		t.Fatalf("want status 403, got %d", types.StatusOf(err))
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Hanivan/datami/internal/httpx"
+	"github.com/Hanivan/datami/types"
 )
 
 type Config struct {
@@ -40,7 +41,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 			Headers: map[string]string{"X-MAL-CLIENT-ID": cfg.ClientID},
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
-					cfg.Metrics("mal", op, dur, err)
+					cfg.Metrics(types.SourceMAL, op, dur, err)
 				}
 			},
 		}),

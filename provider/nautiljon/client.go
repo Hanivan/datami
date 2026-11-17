@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
 
@@ -28,7 +29,7 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceNautiljon, Op: OpSearch, Err: err}
 	}
-	return handleListResponse(code, body, "search")
+	return handleListResponse(code, body, OpSearch)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -40,22 +41,16 @@ func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Me
 }
 
 func handleListResponse(code int, body []byte, op string) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		items, err := parseNautiljonList(body)
-		if err != nil {
-			return nil, &types.Error{Source: types.SourceNautiljon, Op: op, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(items))
-		for _, item := range items {
-			results = append(results, *item.toMedia())
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceNautiljon, Op: op, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceNautiljon, Op: op, Err: types.ErrRateLimited}
-	default:
-		return nil, &types.Error{Source: types.SourceNautiljon, Op: op, Err: fmt.Errorf("status %d", code)}
+	if code != http.StatusOK {
+		return nil, helpers.StatusError(types.SourceNautiljon, op, code)
 	}
+	items, err := parseNautiljonList(body)
+	if err != nil {
+		return nil, &types.Error{Source: types.SourceNautiljon, Op: op, Err: fmt.Errorf("parse: %w", err)}
+	}
+	results := make([]types.Media, 0, len(items))
+	for _, item := range items {
+		results = append(results, *item.toMedia())
+	}
+	return results, nil
 }

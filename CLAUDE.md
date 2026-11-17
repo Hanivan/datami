@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`datami` - Go 1.27 library providing a unified client for anime/manga metadata across multiple sources: MyAnimeList (MAL), AniList, AniDB, Kitsu. Module path: `github.com/Hanivan/datami`.
+`datami` - Go 1.27 library providing a unified client for anime/manga metadata across multiple sources: MyAnimeList (MAL), AniList, AniDB, Kitsu, Hikka, Kaize, Nautiljon, Otakotaku. Module path: `github.com/Hanivan/datami`.
 
 ## Commands
 
@@ -23,13 +23,13 @@ go vet ./...
 **`types/`** - shared domain model. `Media` is the canonical response shape every source maps to. Sentinel errors (`ErrNotFound`, `ErrRateLimited`, `ErrAuthFailed`, `ErrUnavailable`, `ErrInvalidInput`) are defined here. `Error` wraps them with `Source` + `Op` for provenance and supports `Unwrap()` for `errors.Is`.
 
 **Source packages (`provider/anilist/`, `provider/mal/`, `provider/anidb/`, `provider/kitsu/`, `provider/hikka/`, `provider/kaize/`, `provider/nautiljon/`, `provider/otakotaku/`)** - each follows an identical structure:
-- `constants.go` - status/format normalization maps (use `types.Source*` directly, no local `sourceName` const)
+- `constants.go` - status/format normalization maps, when the provider has any (use `types.Source*` directly, no local `sourceName` const)
 - `config.go` - source-specific `Config` + `New()` constructor
 - `client.go` - `Get`, `Search`, `GetByMalID` methods
 - `models.go` - raw API response structs
 - `mapping.go` - `toMedia()` converts raw → `types.Media`
 
-**`internal/httpx/`** - shared HTTP client with timeout, rate limiting, and a metrics callback. Sources inject the source name into the callback. Accepts a `Transport http.RoundTripper` in `Config` for providers that need custom bot-handling (cloudscraper, CSRF, custom headers). Exports shared consts: `DefaultTimeout`, `MaxRetries`, `RetryBackoff`, `DefaultSearchLimit`, `ServerErrThreshold`, `ContentTypeJSON`, `HeaderContentType`, `HeaderAccept`, `HeaderAuthorization`, `BearerPrefix`.
+**`internal/httpx/`** - shared HTTP client with timeout, rate limiting, and a metrics callback. Sources inject the source name into the callback. Accepts a `Transport http.RoundTripper` in `Config` for providers that need custom bot-handling (cloudscraper, CSRF, custom headers). Caps response bodies at `Config.MaxBody` (default `DefaultMaxBody` 32 MiB; over returns `ErrBodyTooLarge`, not retried). Exports shared consts: `DefaultTimeout`, `MaxRetries`, `RetryBackoff`, `DefaultSearchLimit`, `ServerErrThreshold`, `ContentTypeJSON`, `HeaderContentType`, `HeaderAccept`, `HeaderAuthorization`, `BearerPrefix`.
 
 **`internal/helpers/`** - shared mapping helpers. Use these instead of redefining per-provider: `ParseDate`, `RawPayload`, `NormalizeRelation`, `DerefString`, `DerefInt`, `TextContent`, `HasClass`, `TdNodes`.
 
@@ -49,9 +49,10 @@ Do NOT commit without telling the user first. Exception: if the user invokes `/c
 - Tests use `httptest.NewServer` + a `NewWithTestServer(baseURL, cfg)` constructor that bypasses real endpoints.
 - Source status/format strings (e.g. `"RELEASING"` → `"ongoing"`) are normalized in `mapping.go` maps, not in the client.
 - Some providers don't support all methods - they return `types.ErrNotImplemented` (e.g., `Hikka.Get`, `Kaize.Get`, `Nautiljon.Get`, `Otakotaku.Search`, `AniDB.GetManga`, `AniDB.GetByMalID`). Don't treat as a hard error.
-- Non-goal endpoints (not in mono-crawler catalog path) are stubbed with `ErrNotImplemented`: MAL forum/user-list/mutation methods, AniList viewer/list/mutation methods. `types/character.go` has stub types (`ForumBoard`, `ForumPost`, `ForumTopic`, `UserInfo`, `MediaListEntry`, `MediaListCollection`) for these.
+- Non-goal endpoints (not in mono-crawler catalog path) are stubbed with `ErrNotImplemented`: MAL forum/user-list/mutation methods, AniList viewer/list/mutation methods. `types/forum.go` (`ForumBoard`, `ForumPost`, `ForumTopic`) and `types/user.go` (`UserInfo`, `MediaListEntry`, `MediaListCollection`) hold the stub types for these.
 - AniDB: needs registered client (`Config.ClientName`/`ClientVersion`, root `AniDBClientName`/`AniDBClientVersion`/`AniDBCacheDir`); empty name returns `ErrInvalidInput`. `Search` reads the anime-titles dump (cached in CacheDir, 24h refresh, 1h retry after failure, `LoadTitles(io.Reader)` preloads). `GetCharacters(ctx, aid)` exists; `Character.Tags` reserved for a future scraper. Rate limit 1 req/2s, no retries. XML structures adapted from go-anidb (see NOTICE).
 - HTML-based providers (`kaize`, `nautiljon`) parse responses with `golang.org/x/net/html`.
+- HTTP status mapping: `helpers.StatusError` / `helpers.DecodeJSON[T]`. 401 is `ErrAuthFailed`; 403 is `ErrAuthFailed` for keyed sources but `ErrRateLimited` for keyless ones (hikka, kaize, nautiljon, otakotaku), where 403 means a bot/WAF block. AniList (403 = rate limit) and AniDB (body errors, 503) keep their own mappers.
 
 ## Quality
 

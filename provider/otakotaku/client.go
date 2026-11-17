@@ -2,11 +2,10 @@ package otakotaku
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
 
@@ -73,19 +72,9 @@ func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Me
 }
 
 func handleGetResponse(code int, body []byte, op string) (*types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp otakotakuResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceOtakotaku, Op: op, Err: fmt.Errorf("parse: %w", err)}
-		}
-		m := resp.toMedia()
-		return m, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceOtakotaku, Op: op, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceOtakotaku, Op: op, Err: types.ErrRateLimited}
-	default:
-		return nil, &types.Error{Source: types.SourceOtakotaku, Op: op, Err: fmt.Errorf("status %d", code)}
+	resp, err := helpers.DecodeJSON[otakotakuResponse](types.SourceOtakotaku, op, code, body)
+	if err != nil {
+		return nil, err
 	}
+	return resp.toMedia(), nil
 }

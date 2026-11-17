@@ -2,11 +2,10 @@ package kitsu
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/internal/httpx"
 	"github.com/Hanivan/datami/types"
 )
@@ -80,45 +79,23 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 }
 
 func handleResponse(code int, body []byte, op string) (*types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp struct {
-			Data anime `json:"data"`
-		}
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceKitsu, Op: op, Err: fmt.Errorf("parse: %w", err)}
-		}
-		return resp.Data.toMedia(), nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: op, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: op, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: op, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: op, Err: fmt.Errorf("status %d", code)}
+	resp, err := helpers.DecodeJSON[struct {
+		Data anime `json:"data"`
+	}](types.SourceKitsu, op, code, body)
+	if err != nil {
+		return nil, err
 	}
+	return resp.Data.toMedia(), nil
 }
 
 func handleSearchResponse(code int, body []byte) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp searchResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(resp.Data))
-		for _, a := range resp.Data {
-			results = append(results, *a.toMedia())
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: fmt.Errorf("status %d", code)}
+	resp, err := helpers.DecodeJSON[searchResponse](types.SourceKitsu, OpSearch, code, body)
+	if err != nil {
+		return nil, err
 	}
+	results := make([]types.Media, 0, len(resp.Data))
+	for _, a := range resp.Data {
+		results = append(results, *a.toMedia())
+	}
+	return results, nil
 }

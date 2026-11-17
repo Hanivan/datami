@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
 
@@ -51,7 +51,7 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceHikka, Op: OpSearch, Err: err}
 	}
-	return handleListResponse(code, respBody, "search")
+	return handleListResponse(code, respBody, OpSearch)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -72,26 +72,16 @@ func hikkaHeaders() map[string]string {
 }
 
 func handleListResponse(code int, body []byte, op string) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp hikkaResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceHikka, Op: op, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(resp.List))
-		for _, item := range resp.List {
-			if item.MalID == 0 {
-				continue
-			}
-			m := item.toMedia()
-			results = append(results, *m)
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceHikka, Op: op, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceHikka, Op: op, Err: types.ErrRateLimited}
-	default:
-		return nil, &types.Error{Source: types.SourceHikka, Op: op, Err: fmt.Errorf("status %d", code)}
+	resp, err := helpers.DecodeJSON[hikkaResponse](types.SourceHikka, op, code, body)
+	if err != nil {
+		return nil, err
 	}
+	results := make([]types.Media, 0, len(resp.List))
+	for _, item := range resp.List {
+		if item.MalID == 0 {
+			continue
+		}
+		results = append(results, *item.toMedia())
+	}
+	return results, nil
 }

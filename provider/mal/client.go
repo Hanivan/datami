@@ -2,11 +2,10 @@ package mal
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"net/http"
 	"net/url"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/internal/httpx"
 	"github.com/Hanivan/datami/types"
 )
@@ -51,7 +50,7 @@ func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGet, Err: err}
 	}
-	return handleResponse(code, body, "get")
+	return handleResponse(code, body, OpGet)
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -83,7 +82,7 @@ func (c *Client) GetManga(ctx context.Context, id string) (*types.Media, error) 
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetManga, Err: err}
 	}
-	return handleMangaResponse(code, body, "getmanga")
+	return handleMangaResponse(code, body, OpGetManga)
 }
 
 func (c *Client) SearchManga(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -99,7 +98,7 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: err}
 	}
-	return handleMangaSearchResponse(code, body)
+	return handleMangaListResponse(code, body, OpSearchManga)
 }
 
 func (c *Client) GetMangaByMalID(ctx context.Context, malID string) (*types.Media, error) {
@@ -150,43 +149,7 @@ func (c *Client) GetMangaRanking(ctx context.Context, rankingType string, opts t
 	if err != nil {
 		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: err}
 	}
-	return handleMangaRankingResponse(code, body)
-}
-
-func (c *Client) GetAnimeCharacters(ctx context.Context, animeID string) ([]types.Character, error) {
-	if animeID == "" {
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: types.ErrInvalidInput}
-	}
-	u := fmt.Sprintf("%s/anime/%s/characters?limit=100&fields=first_name,last_name,alternative_name,main_picture,num_favorites,biography", c.baseURL, url.PathEscape(animeID))
-	code, body, err := c.client.Get(ctx, u)
-	if err != nil {
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: err}
-	}
-	return handleCharactersResponse(code, body)
-}
-
-func (c *Client) GetCharacter(ctx context.Context, charID string) (*types.Character, error) {
-	if charID == "" {
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrInvalidInput}
-	}
-	u := fmt.Sprintf("%s/characters/%s?fields=first_name,last_name,alternative_name,main_picture,num_favorites,biography,animeography", c.baseURL, url.PathEscape(charID))
-	code, body, err := c.client.Get(ctx, u)
-	if err != nil {
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: err}
-	}
-	return handleCharacterResponse(code, body)
-}
-
-func (c *Client) GetPerson(ctx context.Context, personID string) (*types.Person, error) {
-	if personID == "" {
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: types.ErrInvalidInput}
-	}
-	u := fmt.Sprintf("%s/people/%s?fields=first_name,last_name,main_picture,birthday,num_favorites,more", c.baseURL, url.PathEscape(personID))
-	code, body, err := c.client.Get(ctx, u)
-	if err != nil {
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: err}
-	}
-	return handlePersonResponse(code, body)
+	return handleMangaListResponse(code, body, OpGetMangaRanking)
 }
 
 // Non-goal methods (not used in mono-crawler catalog path). Stubbed with ErrNotImplemented.
@@ -223,195 +186,54 @@ func (c *Client) DeleteAnimeListItem(ctx context.Context, animeID int) error {
 }
 
 func handleResponse(code int, body []byte, op string) (*types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var a anime
-		if err := json.Unmarshal(body, &a); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: fmt.Errorf("parse: %w", err)}
-		}
-		return a.toMedia(), nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: fmt.Errorf("status %d", code)}
+	a, err := helpers.DecodeJSON[anime](types.SourceMAL, op, code, body)
+	if err != nil {
+		return nil, err
 	}
+	return a.toMedia(), nil
 }
 
 func handleSearchResponse(code int, body []byte) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp searchResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(resp.Data))
-		for _, node := range resp.Data {
-			m := node.Node.toMedia()
-			results = append(results, *m)
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearch, Err: fmt.Errorf("status %d", code)}
+	resp, err := helpers.DecodeJSON[searchResponse](types.SourceMAL, OpSearch, code, body)
+	if err != nil {
+		return nil, err
 	}
+	results := make([]types.Media, 0, len(resp.Data))
+	for _, node := range resp.Data {
+		results = append(results, *node.Node.toMedia())
+	}
+	return results, nil
 }
 
 func handleMangaResponse(code int, body []byte, op string) (*types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var m manga
-		if err := json.Unmarshal(body, &m); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: fmt.Errorf("parse: %w", err)}
-		}
-		return m.toMedia(), nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: op, Err: fmt.Errorf("status %d", code)}
+	m, err := helpers.DecodeJSON[manga](types.SourceMAL, op, code, body)
+	if err != nil {
+		return nil, err
 	}
+	return m.toMedia(), nil
 }
 
-func handleMangaSearchResponse(code int, body []byte) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp mangaSearchResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(resp.Data))
-		for _, node := range resp.Data {
-			results = append(results, *node.Node.toMedia())
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpSearchManga, Err: fmt.Errorf("status %d", code)}
+// handleMangaListResponse serves manga search and manga ranking (same shape).
+func handleMangaListResponse(code int, body []byte, op string) ([]types.Media, error) {
+	resp, err := helpers.DecodeJSON[mangaSearchResponse](types.SourceMAL, op, code, body)
+	if err != nil {
+		return nil, err
 	}
+	results := make([]types.Media, 0, len(resp.Data))
+	for _, node := range resp.Data {
+		results = append(results, *node.Node.toMedia())
+	}
+	return results, nil
 }
 
 func handleRankingResponse(code int, body []byte) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp rankingResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(resp.Data))
-		for _, node := range resp.Data {
-			m := node.Node.toMedia()
-			results = append(results, *m)
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetRanking, Err: fmt.Errorf("status %d", code)}
+	resp, err := helpers.DecodeJSON[rankingResponse](types.SourceMAL, OpGetRanking, code, body)
+	if err != nil {
+		return nil, err
 	}
-}
-
-func handleMangaRankingResponse(code int, body []byte) ([]types.Media, error) {
-	switch code {
-	case http.StatusOK:
-		var resp mangaSearchResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Media, 0, len(resp.Data))
-		for _, node := range resp.Data {
-			results = append(results, *node.Node.toMedia())
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetMangaRanking, Err: fmt.Errorf("status %d", code)}
+	results := make([]types.Media, 0, len(resp.Data))
+	for _, node := range resp.Data {
+		results = append(results, *node.Node.toMedia())
 	}
-}
-
-func handleCharactersResponse(code int, body []byte) ([]types.Character, error) {
-	switch code {
-	case http.StatusOK:
-		var resp charactersResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: fmt.Errorf("parse: %w", err)}
-		}
-		results := make([]types.Character, 0, len(resp.Data))
-		for _, ac := range resp.Data {
-			c := ac.toCharacter()
-			results = append(results, *c)
-		}
-		return results, nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetAnimeCharacters, Err: fmt.Errorf("status %d", code)}
-	}
-}
-
-func handleCharacterResponse(code int, body []byte) (*types.Character, error) {
-	switch code {
-	case http.StatusOK:
-		var c character
-		if err := json.Unmarshal(body, &c); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: fmt.Errorf("parse: %w", err)}
-		}
-		return c.toCharacter(), nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetCharacter, Err: fmt.Errorf("status %d", code)}
-	}
-}
-
-func handlePersonResponse(code int, body []byte) (*types.Person, error) {
-	switch code {
-	case http.StatusOK:
-		var p person
-		if err := json.Unmarshal(body, &p); err != nil {
-			return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: fmt.Errorf("parse: %w", err)}
-		}
-		return p.toPerson(), nil
-	case http.StatusNotFound:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: types.ErrNotFound}
-	case http.StatusTooManyRequests:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: types.ErrRateLimited}
-	case http.StatusUnauthorized, http.StatusForbidden:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: types.ErrAuthFailed}
-	default:
-		return nil, &types.Error{Source: types.SourceMAL, Op: OpGetPerson, Err: fmt.Errorf("status %d", code)}
-	}
+	return results, nil
 }

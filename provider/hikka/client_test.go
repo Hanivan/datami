@@ -46,3 +46,19 @@ func TestGetNotImplemented(t *testing.T) {
 		t.Fatal("expected error for Get")
 	}
 }
+
+func TestSearchSkipsZeroMalID(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"list": [{"slug": "a", "mal_id": 0, "title_en": "A"}, {"slug": "b", "mal_id": 5, "title_en": "B"}]}`))
+	}))
+	defer srv.Close()
+
+	c := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second})
+	results, err := c.Search(context.Background(), "", types.SearchOpts{Limit: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 result, got %d", len(results))
+	}
+}

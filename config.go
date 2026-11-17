@@ -7,17 +7,20 @@ import (
 )
 
 type (
-	Media       = types.Media
-	Title       = types.Title
-	Date        = types.Date
-	Score       = types.Score
-	Studio      = types.Studio
-	Image       = types.Image
-	ExternalID  = types.ExternalID
-	Relation    = types.Relation
-	SearchOpts  = types.SearchOpts
-	Error       = types.Error
-	MetricsHook = types.MetricsHook
+	Media        = types.Media
+	Title        = types.Title
+	Date         = types.Date
+	Score        = types.Score
+	Studio       = types.Studio
+	Image        = types.Image
+	ExternalID   = types.ExternalID
+	Relation     = types.Relation
+	SearchOpts   = types.SearchOpts
+	Error        = types.Error
+	MetricsHook  = types.MetricsHook
+	TagsLinks    = types.TagsLinks
+	Tag          = types.Tag
+	ExternalLink = types.ExternalLink
 )
 
 // Re-export sentinel errors
