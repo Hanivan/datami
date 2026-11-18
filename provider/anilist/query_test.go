@@ -50,3 +50,17 @@ func TestQueriesSubSelectObjectFields(t *testing.T) {
 		}
 	}
 }
+
+func TestConfigUserAgentReachesRequest(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+		w.Write([]byte(`{"data":{"Media":{"id":1}}}`))
+	}))
+	defer srv.Close()
+	c := NewWithTestServer(srv.URL, Config{UserAgent: "Newda/1.0"})
+	_, _ = c.Get(context.Background(), "1")
+	if got != "Newda/1.0" {
+		t.Fatalf("User-Agent = %q", got)
+	}
+}

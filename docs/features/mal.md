@@ -37,6 +37,7 @@ Transport failures after retries return the wrapped httpx error. `Retry-After` i
 
 | Field | Default | Meaning |
 |-------|---------|---------|
+| `UserAgent` | `datami (+https://github.com/Hanivan/datami)` | `User-Agent` on every request; set your app name so MAL can identify and throttle you |
 | `ClientID` (root: `MALClientID`) | none | sent as `X-MAL-CLIENT-ID` header on every request; not validated, empty is sent as-is |
 | `Timeout` | 10s | per-request |
 | `Metrics` | nil | `func(source, op, dur, err)` |

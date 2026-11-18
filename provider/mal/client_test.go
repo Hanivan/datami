@@ -465,3 +465,17 @@ func TestAnimeCharactersRosterIsHydrated(t *testing.T) {
 		t.Fatalf("role lost: %+v", got.Roles)
 	}
 }
+
+func TestConfigUserAgentReachesRequest(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+		w.Write([]byte(`{"id":1,"title":"x"}`))
+	}))
+	defer srv.Close()
+	c := NewWithTestServer(srv.URL, Config{ClientID: "id", UserAgent: "Newda/1.0"})
+	_, _ = c.Get(context.Background(), "1")
+	if got != "Newda/1.0" {
+		t.Fatalf("User-Agent = %q", got)
+	}
+}

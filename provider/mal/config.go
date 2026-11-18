@@ -10,7 +10,10 @@ import (
 type Config struct {
 	ClientID string
 	Timeout  time.Duration
-	Metrics  func(source string, op string, dur time.Duration, err error)
+	// UserAgent names the calling app on every request; "" sends
+	// httpx.DefaultUserAgent.
+	UserAgent string
+	Metrics   func(source string, op string, dur time.Duration, err error)
 }
 
 type Client struct {
@@ -36,9 +39,10 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 	return &Client{
 		baseURL: baseURL,
 		client: httpx.New(httpx.Config{
-			Timeout: timeout,
-			Rate:    2,
-			Headers: map[string]string{"X-MAL-CLIENT-ID": cfg.ClientID},
+			Timeout:   timeout,
+			UserAgent: cfg.UserAgent,
+			Rate:      2,
+			Headers:   map[string]string{"X-MAL-CLIENT-ID": cfg.ClientID},
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
 					cfg.Metrics(types.SourceMAL, op, dur, err)

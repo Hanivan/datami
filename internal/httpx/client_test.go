@@ -137,3 +137,27 @@ func TestMetricsReceivesOp(t *testing.T) {
 		t.Fatalf("metrics op = %q, want getanime", got)
 	}
 }
+
+// Every request names its client: the configured UserAgent, else
+// DefaultUserAgent — never Go's anonymous "Go-http-client/1.1", so upstreams
+// can identify and throttle the caller.
+func TestClientSendsUserAgent(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+	}))
+	defer srv.Close()
+
+	for _, tc := range []struct{ cfg, want string }{
+		{"", DefaultUserAgent},
+		{"Newda/1.0 (+https://newda.linkeun.com)", "Newda/1.0 (+https://newda.linkeun.com)"},
+	} {
+		c := New(Config{UserAgent: tc.cfg})
+		if _, _, _, err := c.Get(context.Background(), "op", srv.URL); err != nil {
+			t.Fatal(err)
+		}
+		if got != tc.want {
+			t.Fatalf("UserAgent %q: sent %q, want %q", tc.cfg, got, tc.want)
+		}
+	}
+}

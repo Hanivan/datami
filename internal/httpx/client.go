@@ -25,6 +25,9 @@ const (
 	HeaderAccept        = "Accept"
 	HeaderAuthorization = "Authorization"
 	BearerPrefix        = "Bearer "
+	// DefaultUserAgent names datami when the caller sets none, so no request
+	// goes out as Go's anonymous "Go-http-client/1.1".
+	DefaultUserAgent = "datami (+https://github.com/Hanivan/datami)"
 	// DefaultMaxBody caps a response body read into memory.
 	DefaultMaxBody = 32 << 20
 )
@@ -43,6 +46,9 @@ type Config struct {
 	Metrics   func(op string, dur time.Duration, err error)
 	Transport http.RoundTripper
 	Headers   map[string]string
+	// UserAgent is sent on every request; "" uses DefaultUserAgent. Name your
+	// app here so upstreams can identify and throttle it.
+	UserAgent string
 	// MaxRetries is total attempts per request; 0 uses the MaxRetries const.
 	MaxRetries int
 	// MaxBody caps the response body in bytes; 0 uses DefaultMaxBody.
@@ -54,6 +60,7 @@ type Client struct {
 	limiter    *rate.Limiter
 	metrics    func(op string, dur time.Duration, err error)
 	headers    map[string]string
+	userAgent  string
 	maxRetries int
 	maxBody    int64
 }
@@ -79,6 +86,10 @@ func New(cfg Config) *Client {
 	if maxBody <= 0 {
 		maxBody = DefaultMaxBody
 	}
+	userAgent := cfg.UserAgent
+	if userAgent == "" {
+		userAgent = DefaultUserAgent
+	}
 	base := &http.Client{
 		Timeout: timeout,
 	}
@@ -90,6 +101,7 @@ func New(cfg Config) *Client {
 		limiter:    limiter,
 		metrics:    cfg.Metrics,
 		headers:    cfg.Headers,
+		userAgent:  userAgent,
 		maxRetries: maxRetries,
 		maxBody:    maxBody,
 	}
@@ -119,6 +131,7 @@ func (c *Client) Post(ctx context.Context, op, url string, body []byte, headers 
 // operation name reported to the metrics callback. A 429 or 503 answers with
 // the cooldown the server wants; honouring it beats guessing a backoff.
 func (c *Client) Do(op string, req *http.Request) (int, []byte, int, error) {
+	req.Header.Set("User-Agent", c.userAgent)
 	for k, v := range c.headers {
 		req.Header.Set(k, v)
 	}

@@ -37,6 +37,7 @@ Status mapping (`statusErr` in `client.go`, not `helpers.StatusError`):
 
 | Field | Default | Meaning |
 |-------|---------|---------|
+| `UserAgent` | `datami (+https://github.com/Hanivan/datami)` | `User-Agent` on every request; set your app name so AniList can identify and throttle you |
 | `Token` (root: `AniListToken`) | empty | optional; sent as `Authorization: Bearer <token>` when non-empty |
 | `DescriptionAsHTML` (root: `AniListDescriptionAsHTML`) | nil = true | `*bool`; sets `asHtml` on Media and Character descriptions; `false` returns AniList markdown |
 | `Timeout` | 10s | per-request |
