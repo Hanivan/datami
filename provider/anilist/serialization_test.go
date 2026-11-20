@@ -28,6 +28,8 @@ func TestMediaSurvivesJSONRoundTrip(t *testing.T) {
 					"title": {"romaji": "Cowboy Bebop"},
 					"status": "FINISHED",
 					"format": "TV",
+					"studios": {"edges": [{"isMain": true, "node": {"id": 14, "name": "Sunrise", "isAnimationStudio": true}}]},
+					"externalLinks": [{"id": 9, "url": "https://example.com/s", "site": "Crunchyroll", "type": "STREAMING"}],
 					"rankings": [{"rank": 1, "type": "RATED"}],
 					"stats": {"scoreDistribution": [{"score": 90, "amount": 10}]}
 				}
@@ -55,6 +57,13 @@ func TestMediaSurvivesJSONRoundTrip(t *testing.T) {
 	var got types.Media
 	if err := json.Unmarshal(b, &got); err != nil {
 		t.Fatal(err)
+	}
+
+	if len(got.Studios) != 1 || !got.Studios[0].IsAnimationStudio || !got.Studios[0].IsMain {
+		t.Fatalf("studio flags lost in round trip: %+v", got.Studios)
+	}
+	if len(got.ExternalLinks) != 1 || got.ExternalLinks[0].URL != "https://example.com/s" {
+		t.Fatalf("external links lost in round trip: %+v", got.ExternalLinks)
 	}
 
 	if got.StatusField != "FINISHED" {

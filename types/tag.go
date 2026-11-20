@@ -16,12 +16,12 @@ type Tag struct {
 }
 
 type ExternalLink struct {
-	ID         int
-	URL        string
-	Site       string
-	SiteID     *int
-	Type       string
-	Language   string
-	Notes      string
-	IsDisabled bool
+	ID         int    `json:"id"`
+	URL        string `json:"url"`
+	Site       string `json:"site"`
+	SiteID     *int   `json:"site_id,omitempty"`
+	Type       string `json:"type"`
+	Language   string `json:"language"`
+	Notes      string `json:"notes"`
+	IsDisabled bool   `json:"is_disabled"`
 }

@@ -20,8 +20,10 @@ type Score struct {
 }
 
 type Studio struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID                string `json:"id"`
+	Name              string `json:"name"`
+	IsAnimationStudio bool   `json:"is_animation_studio,omitempty"`
+	IsMain            bool   `json:"is_main,omitempty"`
 }
 
 type Image struct {
@@ -76,6 +78,7 @@ type Media struct {
 	Score             *Score              `json:"score,omitempty"`
 	Genres            []string            `json:"genres,omitempty"`
 	Studios           []Studio            `json:"studios,omitempty"`
+	ExternalLinks     []ExternalLink      `json:"external_links,omitempty"`
 	Images            map[ImageSize]Image `json:"images,omitempty"`
 	Relations         []Relation          `json:"relations,omitempty"`
 	ExternalIDs       []ExternalID        `json:"external_ids,omitempty"`

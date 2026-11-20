@@ -31,7 +31,7 @@ func TestGetMedia(t *testing.T) {
 					"meanScore": 78,
 					"popularity": 15000,
 					"genres": ["Action", "Sci-Fi"],
-					"studios": {"nodes": [{"id": 14, "name": "Sunrise"}]},
+					"studios": {"edges": [{"isMain": true, "node": {"id": 14, "name": "Sunrise", "isAnimationStudio": true}}]},
 					"coverImage": {"medium": "https://example.com/cb.jpg", "large": "https://example.com/cb_large.jpg"},
 					"relations": {"edges": [{"relationType": "SEQUEL", "node": {"id": 2, "title": {"romaji": "Cowboy Bebop: The Movie"}}}]},
 					"externalLinks": [],
@@ -299,5 +299,42 @@ func TestTagsAndLinksNotFoundIsDistinct(t *testing.T) {
 	_, err := c.GetTagsAndLinksByMalID(context.Background(), "999999", "ANIME")
 	if !errors.Is(err, ErrMediaNotFound) {
 		t.Fatalf("expected ErrMediaNotFound, got %v", err)
+	}
+}
+
+func TestStudiosCarryAnimationFlag(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"data":{"Media":{"id":1,"title":{"romaji":"x"},"studios":{"edges":[
+			{"isMain":true,"node":{"id":14,"name":"Sunrise","isAnimationStudio":true}},
+			{"isMain":false,"node":{"id":7,"name":"Pony","isAnimationStudio":false}}]}}}}`))
+	}))
+	defer srv.Close()
+	m, err := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second}).Get(context.Background(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.Studios) != 2 {
+		t.Fatalf("studios = %+v", m.Studios)
+	}
+	if s := m.Studios[0]; s.ID != "14" || !s.IsAnimationStudio || !s.IsMain {
+		t.Errorf("studio 0 = %+v", s)
+	}
+	if s := m.Studios[1]; s.IsAnimationStudio || s.IsMain {
+		t.Errorf("studio 1 = %+v", s)
+	}
+}
+
+func TestExternalLinksMapped(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"data":{"Media":{"id":1,"title":{"romaji":"x"},"externalLinks":[
+			{"id":9,"url":"https://example.com/s","site":"Crunchyroll","siteId":5,"type":"STREAMING","language":"English","isDisabled":false}]}}}`))
+	}))
+	defer srv.Close()
+	m, err := NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second}).Get(context.Background(), "1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m.ExternalLinks) != 1 || m.ExternalLinks[0].URL != "https://example.com/s" || m.ExternalLinks[0].Site != "Crunchyroll" {
+		t.Fatalf("links = %+v", m.ExternalLinks)
 	}
 }

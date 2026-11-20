@@ -63,12 +63,21 @@ func (m media) toMedia() *types.Media {
 	result.Genres = m.Genres
 
 	if m.Studios != nil {
-		for _, s := range m.Studios.Nodes {
+		for _, e := range m.Studios.Edges {
 			result.Studios = append(result.Studios, types.Studio{
-				ID:   strconv.Itoa(s.ID),
-				Name: s.Name,
+				ID:                strconv.Itoa(e.Node.ID),
+				Name:              e.Node.Name,
+				IsAnimationStudio: e.Node.IsAnimationStudio,
+				IsMain:            e.IsMain,
 			})
 		}
+	}
+
+	for _, l := range m.ExternalLinks {
+		result.ExternalLinks = append(result.ExternalLinks, types.ExternalLink{
+			ID: l.ID, URL: l.URL, Site: l.Site, SiteID: l.SiteID, Type: l.Type,
+			Language: l.Language, Notes: l.Notes, IsDisabled: l.IsDisabled,
+		})
 	}
 
 	if m.Relations != nil {

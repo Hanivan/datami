@@ -68,12 +68,18 @@ type fuzzyDate struct {
 }
 
 type studioConn struct {
-	Nodes []studioNode `json:"nodes"`
+	Edges []studioEdge `json:"edges"`
+}
+
+type studioEdge struct {
+	IsMain bool       `json:"isMain"`
+	Node   studioNode `json:"node"`
 }
 
 type studioNode struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID                int    `json:"id"`
+	Name              string `json:"name"`
+	IsAnimationStudio bool   `json:"isAnimationStudio"`
 }
 
 type coverImage struct {

@@ -39,6 +39,9 @@ func TestQueriesSubSelectObjectFields(t *testing.T) {
 		t.Fatal("no queries captured")
 	}
 	for i, q := range captured {
+		if !strings.Contains(q, "MANGA") && !strings.Contains(q, "studios { edges { isMain node { id name isAnimationStudio } } }") {
+			t.Errorf("query %d: studios must select edges isMain + isAnimationStudio", i)
+		}
 		if strings.Contains(q, "rankings stats") || strings.Contains(q, "rankings }") {
 			t.Errorf("query %d requests rankings/stats without a sub selection: AniList answers 400", i)
 		}
