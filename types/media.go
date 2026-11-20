@@ -81,6 +81,8 @@ type Media struct {
 	ExternalLinks     []ExternalLink      `json:"external_links,omitempty"`
 	Images            map[ImageSize]Image `json:"images,omitempty"`
 	Relations         []Relation          `json:"relations,omitempty"`
+	Characters        []Character         `json:"characters,omitempty"`
+	Staff             []Person            `json:"staff,omitempty"`
 	ExternalIDs       []ExternalID        `json:"external_ids,omitempty"`
 	Season            Season              `json:"season,omitempty"`
 	Year              int                 `json:"year,omitempty"`

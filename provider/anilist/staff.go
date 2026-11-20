@@ -9,27 +9,28 @@ import (
 )
 
 // GetStaff returns the staff edges of a media by AniList id.
-func (c *Client) GetStaff(ctx context.Context, id string) ([]types.Person, error) {
-	return c.staffBy(ctx, "id", id, "")
+func (c *Client) GetStaff(ctx context.Context, id string, opts ...types.PageOpts) ([]types.Person, error) {
+	return c.staffBy(ctx, "id", id, "", opts...)
 }
 
 // GetStaffByMalID returns the staff edges of a media addressed by its MAL id.
 // See GetCharactersByMalID on why the id namespace matters.
-func (c *Client) GetStaffByMalID(ctx context.Context, malID, mediaType string) ([]types.Person, error) {
-	return c.staffBy(ctx, "idMal", malID, mediaType)
+func (c *Client) GetStaffByMalID(ctx context.Context, malID, mediaType string, opts ...types.PageOpts) ([]types.Person, error) {
+	return c.staffBy(ctx, "idMal", malID, mediaType, opts...)
 }
 
-func (c *Client) staffBy(ctx context.Context, idField, id, mediaType string) ([]types.Person, error) {
+func (c *Client) staffBy(ctx context.Context, idField, id, mediaType string, opts ...types.PageOpts) ([]types.Person, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: types.ErrInvalidInput}
 	}
-	sel := `staff(page: $page, perPage: $perPage, sort: RELEVANCE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } primaryOccupations } } }`
+	sel := "staff(page: $page, perPage: $perPage, " + staffSort + ") " + staffBody
 	query, vars := mediaPageQuery(idField, id, mediaType, sel)
 	var all []staffEdge
-	for page := 1; page <= 10; page++ {
+	start, max := resolvePages(opts)
+	for page := start; page < start+max; page++ {
 		pageVars := copyVars(vars)
 		pageVars["page"] = page
-		pageVars["perPage"] = 25
+		pageVars["perPage"] = pageSize
 		conn, err := c.doStaffConn(ctx, query, pageVars, OpGetStaff)
 		if err != nil {
 			return nil, err

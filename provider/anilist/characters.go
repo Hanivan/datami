@@ -10,8 +10,8 @@ import (
 
 // GetCharacters returns the character edges of a media by AniList id,
 // walking pages (AniList caps at 25 per page).
-func (c *Client) GetCharacters(ctx context.Context, id string) ([]types.Character, error) {
-	return c.charactersBy(ctx, "id", id, "")
+func (c *Client) GetCharacters(ctx context.Context, id string, opts ...types.PageOpts) ([]types.Character, error) {
+	return c.charactersBy(ctx, "id", id, "", opts...)
 }
 
 // GetCharactersByMalID returns the character edges of a media addressed by its
@@ -19,21 +19,22 @@ func (c *Client) GetCharacters(ctx context.Context, id string) ([]types.Characte
 // to GetCharacters resolves to an unrelated media (or none) - a caller holding
 // a MAL id must use this. mediaType ("ANIME"/"MANGA") disambiguates, since one
 // MAL id can exist in both namespaces; "" queries without the type filter.
-func (c *Client) GetCharactersByMalID(ctx context.Context, malID, mediaType string) ([]types.Character, error) {
-	return c.charactersBy(ctx, "idMal", malID, mediaType)
+func (c *Client) GetCharactersByMalID(ctx context.Context, malID, mediaType string, opts ...types.PageOpts) ([]types.Character, error) {
+	return c.charactersBy(ctx, "idMal", malID, mediaType, opts...)
 }
 
-func (c *Client) charactersBy(ctx context.Context, idField, id, mediaType string) ([]types.Character, error) {
+func (c *Client) charactersBy(ctx context.Context, idField, id, mediaType string, opts ...types.PageOpts) ([]types.Character, error) {
 	if id == "" {
 		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: types.ErrInvalidInput}
 	}
-	sel := `characters(page: $page, perPage: $perPage, sort: ROLE) { pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } ` + c.desc() + ` } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
+	sel := "characters(page: $page, perPage: $perPage, " + charSort + ") " + c.charBody()
 	query, vars := mediaPageQuery(idField, id, mediaType, sel)
 	var all []characterEdge
-	for page := 1; page <= 10; page++ {
+	start, max := resolvePages(opts)
+	for page := start; page < start+max; page++ {
 		pageVars := copyVars(vars)
 		pageVars["page"] = page
-		pageVars["perPage"] = 25
+		pageVars["perPage"] = pageSize
 		conn, err := c.doCharConn(ctx, query, pageVars, OpGetCharacters)
 		if err != nil {
 			return nil, err
