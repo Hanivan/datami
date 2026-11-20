@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"golang.org/x/time/rate"
+
+	"github.com/Hanivan/datami/types"
 )
 
 const (
@@ -40,9 +42,12 @@ var ErrBodyTooLarge = errors.New("httpx: response body too large")
 var ErrLimiterWait = errors.New("httpx: rate limiter wait")
 
 type Config struct {
-	Timeout   time.Duration
-	Rate      float64
-	Burst     int
+	Timeout time.Duration
+	Rate    float64
+	Burst   int
+	// Limiter, when non-nil, replaces the limiter built from Rate/Burst so
+	// callers can share one budget across clients.
+	Limiter   types.Limiter
 	Metrics   func(op string, dur time.Duration, err error)
 	Transport http.RoundTripper
 	Headers   map[string]string
@@ -57,7 +62,7 @@ type Config struct {
 
 type Client struct {
 	base       *http.Client
-	limiter    *rate.Limiter
+	limiter    types.Limiter
 	metrics    func(op string, dur time.Duration, err error)
 	headers    map[string]string
 	userAgent  string
@@ -74,8 +79,8 @@ func New(cfg Config) *Client {
 	if burst == 0 {
 		burst = 1
 	}
-	var limiter *rate.Limiter
-	if cfg.Rate > 0 {
+	limiter := cfg.Limiter
+	if limiter == nil && cfg.Rate > 0 {
 		limiter = rate.NewLimiter(rate.Limit(cfg.Rate), burst)
 	}
 	maxRetries := cfg.MaxRetries

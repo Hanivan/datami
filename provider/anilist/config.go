@@ -13,7 +13,10 @@ type Config struct {
 	// UserAgent names the calling app on every request; "" sends
 	// httpx.DefaultUserAgent.
 	UserAgent string
-	Metrics   func(source string, op string, dur time.Duration, err error)
+	// Limiter replaces the built-in rate limiter when non-nil, so callers can
+	// share one request budget across clients.
+	Limiter types.Limiter
+	Metrics func(source string, op string, dur time.Duration, err error)
 	// DescriptionAsHTML sets asHtml on every description field (Media and
 	// Character). nil means true (HTML); false returns AniList markdown.
 	DescriptionAsHTML *bool
@@ -46,6 +49,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 		client: httpx.New(httpx.Config{
 			Timeout:   timeout,
 			UserAgent: cfg.UserAgent,
+			Limiter:   cfg.Limiter,
 			Rate:      1.5,
 			Metrics: func(op string, dur time.Duration, err error) {
 				if cfg.Metrics != nil {
