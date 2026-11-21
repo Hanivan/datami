@@ -29,6 +29,7 @@ type fuCall struct {
 // connection JSON or "null" for a null Media; status != 0 fails that request.
 type followUpServer struct {
 	first   string
+	errs    string // raw "errors" JSON added to follow-up replies, if set
 	answer  func(fuCall) string
 	status  func(n int) int
 	queries []string
@@ -36,6 +37,11 @@ type followUpServer struct {
 }
 
 func (s *followUpServer) client(t *testing.T) *Client {
+	t.Helper()
+	return s.clientWith(t, nil)
+}
+
+func (s *followUpServer) clientWith(t *testing.T, metrics func(string, string, time.Duration, error)) *Client {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
@@ -73,10 +79,14 @@ func (s *followUpServer) client(t *testing.T) *Client {
 			parts = append(parts, `"`+m[1]+`":`+v)
 		}
 		s.rounds = append(s.rounds, calls)
-		io.WriteString(w, `{"data":{`+strings.Join(parts, ",")+`}}`)
+		reply := `{"data":{` + strings.Join(parts, ",") + `}`
+		if s.errs != "" {
+			reply += `,"errors":` + s.errs
+		}
+		io.WriteString(w, reply+`}`)
 	}))
 	t.Cleanup(srv.Close)
-	return NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second, Limiter: rate.NewLimiter(rate.Inf, 1)})
+	return NewWithTestServer(srv.URL, Config{Timeout: 5 * time.Second, Limiter: rate.NewLimiter(rate.Inf, 1), Metrics: metrics})
 }
 
 // edgeID gives every (media, connection, page) edge a distinct id so order
@@ -306,4 +316,31 @@ func TestGetByMalID_UsesPackedPath(t *testing.T) {
 	}
 	checkPages(t, "chars", charIDs(m), 7, false, 3)
 	checkPages(t, "staff", staffIDs(m), 7, true, 4)
+}
+
+func TestFollowUps_GraphQLErrorFailsCall(t *testing.T) {
+	s := &followUpServer{
+		first:  page(bm(101, 1, embedded(101, false, 2, true))),
+		errs:   `[{"message":"Max query complexity","status":400}]`,
+		answer: func(c fuCall) string { return "null" },
+	}
+	_, err := s.client(t).GetByMalIDs(context.Background(), []string{"1"}, types.MediaOpts{CharacterPages: 2})
+	if err == nil || !strings.Contains(err.Error(), "Max query complexity") {
+		t.Fatalf("want GraphQL error, got %v", err)
+	}
+}
+
+func TestFollowUps_MetricsOp(t *testing.T) {
+	s := &followUpServer{
+		first:  page(bm(101, 1, embedded(101, false, 2, true))),
+		answer: func(c fuCall) string { return followEdge(c, false) },
+	}
+	var ops []string
+	c := s.clientWith(t, func(_, op string, _ time.Duration, _ error) { ops = append(ops, op) })
+	if _, err := c.GetByMalIDs(context.Background(), []string{"1"}, types.MediaOpts{CharacterPages: 2}); err != nil {
+		t.Fatal(err)
+	}
+	if len(ops) != 2 || ops[0] != OpGetByMalIDs || ops[1] != OpFollowUps {
+		t.Fatalf("ops %v", ops)
+	}
 }

@@ -26,13 +26,15 @@ type pending struct {
 // rounds. Each round asks for the next page of every connection still
 // pending, packed followUpAliases per request across works. A connection
 // drops out when its page reports no next page, its Media answers null, or it
-// reaches its cap. Any failed request fails the call.
-func (c *Client) followUps(ctx context.Context, pend []pending, op string) error {
+// reaches its cap. Any failed request, or a reply carrying GraphQL errors,
+// fails the call. Requests are counted under OpFollowUps: one mixes cast and
+// staff pages of several works.
+func (c *Client) followUps(ctx context.Context, pend []pending) error {
 	for len(pend) > 0 {
 		var keep []pending
 		for start := 0; start < len(pend); start += followUpAliases {
 			chunk := pend[start:min(start+followUpAliases, len(pend))]
-			more, err := c.followUpRequest(ctx, chunk, op)
+			more, err := c.followUpRequest(ctx, chunk)
 			if err != nil {
 				return err
 			}
@@ -45,7 +47,8 @@ func (c *Client) followUps(ctx context.Context, pend []pending, op string) error
 
 // followUpRequest sends one packed query for chunk, merges each alias's edges
 // into its media, and returns the connections that continue.
-func (c *Client) followUpRequest(ctx context.Context, chunk []pending, op string) ([]pending, error) {
+func (c *Client) followUpRequest(ctx context.Context, chunk []pending) ([]pending, error) {
+	const op = OpFollowUps
 	var b strings.Builder
 	b.WriteString("query {")
 	for i, p := range chunk {
@@ -65,9 +68,18 @@ func (c *Client) followUpRequest(ctx context.Context, chunk []pending, op string
 			Characters *charConn  `json:"characters"`
 			Staff      *staffConn `json:"staff"`
 		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
 		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("decode: %w", err)}
+	}
+	// AniList answers 200 with "errors" when it rejects part of the query
+	// (complexity, an internal fault); the affected aliases come back null.
+	// Treating that as "no more pages" would silently truncate a roster.
+	if len(resp.Errors) > 0 {
+		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("graphql: %s", resp.Errors[0].Message)}
 	}
 	var more []pending
 	for i, p := range chunk {

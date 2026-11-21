@@ -77,14 +77,14 @@ func (c *Client) embedPages(query string, o types.MediaOpts) string {
 
 // mergeEmbedded decodes the aliased pages of a single-media response into m
 // and returns the connections that still have pages to fetch.
-func mergeEmbedded(body []byte, mediaID int, o types.MediaOpts, m *types.Media) ([]pending, error) {
+func mergeEmbedded(body []byte, mediaID int, o types.MediaOpts, m *types.Media, op string) ([]pending, error) {
 	var raw struct {
 		Data struct {
 			Media map[string]json.RawMessage `json:"Media"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
+		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("decode: %w", err)}
 	}
 	return mergeEmbeddedMap(raw.Data.Media, mediaID, o, m)
 }

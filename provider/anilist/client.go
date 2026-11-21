@@ -28,6 +28,7 @@ const (
 	OpDeleteMediaListEntry   = "deletemedialistentry"
 	OpGetCharacters          = "getcharacters"
 	OpGetStaff               = "getstaff"
+	OpFollowUps              = "followups"
 	OpGetTagsLinks           = "gettagslinks"
 )
 
@@ -116,11 +117,11 @@ func (c *Client) doGraphQL(ctx context.Context, query string, vars map[string]an
 	}
 	m := result.Data.Media.toMedia()
 	if mo.CharacterPages > 0 || mo.StaffPages > 0 {
-		pend, err := mergeEmbedded(body, result.Data.Media.ID, mo, m)
+		pend, err := mergeEmbedded(body, result.Data.Media.ID, mo, m, op)
 		if err != nil {
 			return nil, err
 		}
-		if err := c.followUps(ctx, pend, op); err != nil {
+		if err := c.followUps(ctx, pend); err != nil {
 			return nil, err
 		}
 	}

@@ -92,7 +92,7 @@ func (c *Client) getByMalIDs(ctx context.Context, malIDs []string, typ, sel, op 
 		}
 		out[strconv.Itoa(*md.MALID)] = m
 	}
-	if err := c.followUps(ctx, pend, op); err != nil {
+	if err := c.followUps(ctx, pend); err != nil {
 		return nil, err
 	}
 	return out, nil
