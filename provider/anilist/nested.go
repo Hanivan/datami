@@ -78,13 +78,18 @@ func (c *Client) mergeEmbedded(ctx context.Context, body []byte, mediaID int, o 
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
 	}
+	return c.mergeEmbeddedMap(ctx, raw.Data.Media, mediaID, o, m)
+}
+
+// mergeEmbeddedMap is mergeEmbedded over one already-split media object.
+func (c *Client) mergeEmbeddedMap(ctx context.Context, media map[string]json.RawMessage, mediaID int, o types.MediaOpts, m *types.Media) error {
 	nc, ns := min(o.CharacterPages, maxPages), min(o.StaffPages, maxPages)
 
 	var chars []characterEdge
 	var moreChars bool
 	for i := 1; i <= nc; i++ {
 		var conn charConn
-		if r, ok := raw.Data.Media["c"+strconv.Itoa(i)]; ok && string(r) != "null" {
+		if r, ok := media["c"+strconv.Itoa(i)]; ok && string(r) != "null" {
 			if err := json.Unmarshal(r, &conn); err != nil {
 				return &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
 			}
@@ -110,7 +115,7 @@ func (c *Client) mergeEmbedded(ctx context.Context, body []byte, mediaID int, o 
 	var moreStaff bool
 	for i := 1; i <= ns; i++ {
 		var conn staffConn
-		if r, ok := raw.Data.Media["s"+strconv.Itoa(i)]; ok && string(r) != "null" {
+		if r, ok := media["s"+strconv.Itoa(i)]; ok && string(r) != "null" {
 			if err := json.Unmarshal(r, &conn); err != nil {
 				return &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: fmt.Errorf("decode: %w", err)}
 			}
