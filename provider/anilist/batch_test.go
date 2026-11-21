@@ -73,7 +73,7 @@ func TestGetByMalIDs_FollowUpOnlyForMediaWithMore(t *testing.T) {
 				bm(102, 2, `"c1":`+conn(false, cEdge(3))+`,"c2":`+conn(false)),
 			)
 		}
-		return `{"data":{"Media":{"characters":` + conn(false, cEdge(9)) + `}}}`
+		return `{"data":{"a0":{"characters":` + conn(false, cEdge(9)) + `}}}`
 	})
 	got, err := c.GetByMalIDs(context.Background(), []string{"1", "2"}, types.MediaOpts{CharacterPages: 2})
 	if err != nil {
@@ -82,8 +82,8 @@ func TestGetByMalIDs_FollowUpOnlyForMediaWithMore(t *testing.T) {
 	if len(log.queries) != 2 {
 		t.Fatalf("requests %d", len(log.queries))
 	}
-	if log.vars[1]["id"] != float64(101) || log.vars[1]["page"] != float64(3) {
-		t.Fatalf("follow-up vars %v", log.vars[1])
+	if q := log.queries[1]; !strings.Contains(q, "a0: Media(id: 101) { characters(page: 3,") || strings.Contains(q, "a1:") {
+		t.Fatalf("follow-up query %s", q)
 	}
 	if len(got["1"].Characters) != 3 {
 		t.Fatalf("chars %d", len(got["1"].Characters))

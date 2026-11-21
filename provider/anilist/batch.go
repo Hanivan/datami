@@ -13,7 +13,7 @@ import (
 const maxBatch = 50
 
 // GetByMalIDs fetches the ANIME whose MAL ids are malIDs in one request (plus
-// follow-ups for works with more cast/staff than the embedded pages hold). The
+// packed follow-ups for works with more cast/staff than the embedded pages hold). The
 // result is keyed by MAL id; ids AniList does not know are absent. At most 50
 // ids; empty input returns an empty map without a request.
 func (c *Client) GetByMalIDs(ctx context.Context, malIDs []string, opts ...types.MediaOpts) (map[string]*types.Media, error) {
@@ -77,17 +77,23 @@ func (c *Client) getByMalIDs(ctx context.Context, malIDs []string, typ, sel, op 
 	if err := json.Unmarshal(body, &rawResp); err != nil {
 		return fail(fmt.Errorf("decode: %w", err))
 	}
+	var pend []pending
 	for i, md := range typed.Data.Page.Media {
 		if md == nil || md.MALID == nil {
 			continue
 		}
 		m := md.toMedia()
 		if mo.CharacterPages > 0 || mo.StaffPages > 0 {
-			if err := c.mergeEmbeddedMap(ctx, rawResp.Data.Page.Media[i], md.ID, mo, m); err != nil {
+			p, err := mergeEmbeddedMap(rawResp.Data.Page.Media[i], md.ID, mo, m)
+			if err != nil {
 				return nil, err
 			}
+			pend = append(pend, p...)
 		}
 		out[strconv.Itoa(*md.MALID)] = m
+	}
+	if err := c.followUps(ctx, pend, op); err != nil {
+		return nil, err
 	}
 	return out, nil
 }

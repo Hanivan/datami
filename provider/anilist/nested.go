@@ -1,7 +1,6 @@
 package anilist
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -11,7 +10,8 @@ import (
 )
 
 const (
-	// maxPages caps total pages per connection (embedded + follow-up).
+	// maxPages is the default total page cap per connection (embedded +
+	// follow-up), and the fixed cap of the standalone GetCharacters/GetStaff walk.
 	maxPages = 10
 	// pageSize is AniList's per-page ceiling; never send more.
 	pageSize = 25
@@ -48,93 +48,87 @@ func resolvePages(opts []types.PageOpts) (start, max int) {
 	return start, max
 }
 
+// pageCap is a connection's total page cap: max, or maxPages when unset.
+func pageCap(max int) int {
+	if max > 0 {
+		return max
+	}
+	return maxPages
+}
+
 // embedPages appends c1..cN / s1..sN aliased connections to a Media query,
 // which ends with the Media close and the query close.
 func (c *Client) embedPages(query string, o types.MediaOpts) string {
-	if o.CharacterPages <= 0 && o.StaffPages <= 0 {
+	nc, ns := min(o.CharacterPages, pageCap(o.MaxCharacterPages)), min(o.StaffPages, pageCap(o.MaxStaffPages))
+	if nc <= 0 && ns <= 0 {
 		return query
 	}
 	var b strings.Builder
 	b.WriteString(strings.TrimSuffix(strings.TrimSuffix(query, " }"), " }"))
-	for i := 1; i <= min(o.CharacterPages, maxPages); i++ {
+	for i := 1; i <= nc; i++ {
 		fmt.Fprintf(&b, " c%d: characters(page: %d, perPage: %d, %s) %s", i, i, pageSize, charSort, c.charBody())
 	}
-	for i := 1; i <= min(o.StaffPages, maxPages); i++ {
+	for i := 1; i <= ns; i++ {
 		fmt.Fprintf(&b, " s%d: staff(page: %d, perPage: %d, %s) %s", i, i, pageSize, staffSort, staffBody)
 	}
 	b.WriteString(" } }")
 	return b.String()
 }
 
-// mergeEmbedded decodes the aliased pages from body into m, then walks the
-// remaining pages with a standalone follow-up when the last embedded page
-// reported more.
-func (c *Client) mergeEmbedded(ctx context.Context, body []byte, mediaID int, o types.MediaOpts, m *types.Media) error {
+// mergeEmbedded decodes the aliased pages of a single-media response into m
+// and returns the connections that still have pages to fetch.
+func mergeEmbedded(body []byte, mediaID int, o types.MediaOpts, m *types.Media) ([]pending, error) {
 	var raw struct {
 		Data struct {
 			Media map[string]json.RawMessage `json:"Media"`
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
+		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
 	}
-	return c.mergeEmbeddedMap(ctx, raw.Data.Media, mediaID, o, m)
+	return mergeEmbeddedMap(raw.Data.Media, mediaID, o, m)
 }
 
 // mergeEmbeddedMap is mergeEmbedded over one already-split media object.
-func (c *Client) mergeEmbeddedMap(ctx context.Context, media map[string]json.RawMessage, mediaID int, o types.MediaOpts, m *types.Media) error {
-	nc, ns := min(o.CharacterPages, maxPages), min(o.StaffPages, maxPages)
+func mergeEmbeddedMap(media map[string]json.RawMessage, mediaID int, o types.MediaOpts, m *types.Media) ([]pending, error) {
+	var pend []pending
+	capC, capS := pageCap(o.MaxCharacterPages), pageCap(o.MaxStaffPages)
+	nc, ns := min(o.CharacterPages, capC), min(o.StaffPages, capS)
 
-	var chars []characterEdge
-	var moreChars bool
 	for i := 1; i <= nc; i++ {
 		var conn charConn
 		if r, ok := media["c"+strconv.Itoa(i)]; ok && string(r) != "null" {
 			if err := json.Unmarshal(r, &conn); err != nil {
-				return &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
+				return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
 			}
 		}
-		chars = append(chars, conn.Edges...)
-		moreChars = conn.PageInfo.HasNextPage
-		if !moreChars {
+		for _, e := range conn.Edges {
+			m.Characters = append(m.Characters, *e.toCharacter())
+		}
+		if !conn.PageInfo.HasNextPage {
 			break
 		}
-	}
-	for _, e := range chars {
-		m.Characters = append(m.Characters, *e.toCharacter())
-	}
-	if moreChars && nc < maxPages {
-		rest, err := c.charactersBy(ctx, "id", strconv.Itoa(mediaID), "", types.PageOpts{StartPage: nc + 1, MaxPages: maxPages - nc})
-		if err != nil {
-			return err
+		if i == nc && nc < capC {
+			pend = append(pend, pending{media: m, mediaID: mediaID, next: nc + 1, last: capC})
 		}
-		m.Characters = append(m.Characters, rest...)
 	}
 
-	var staff []staffEdge
-	var moreStaff bool
 	for i := 1; i <= ns; i++ {
 		var conn staffConn
 		if r, ok := media["s"+strconv.Itoa(i)]; ok && string(r) != "null" {
 			if err := json.Unmarshal(r, &conn); err != nil {
-				return &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: fmt.Errorf("decode: %w", err)}
+				return nil, &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: fmt.Errorf("decode: %w", err)}
 			}
 		}
-		staff = append(staff, conn.Edges...)
-		moreStaff = conn.PageInfo.HasNextPage
-		if !moreStaff {
+		for _, e := range conn.Edges {
+			m.Staff = append(m.Staff, *e.toPerson())
+		}
+		if !conn.PageInfo.HasNextPage {
 			break
 		}
-	}
-	for _, e := range staff {
-		m.Staff = append(m.Staff, *e.toPerson())
-	}
-	if moreStaff && ns < maxPages {
-		rest, err := c.staffBy(ctx, "id", strconv.Itoa(mediaID), "", types.PageOpts{StartPage: ns + 1, MaxPages: maxPages - ns})
-		if err != nil {
-			return err
+		if i == ns && ns < capS {
+			pend = append(pend, pending{media: m, mediaID: mediaID, staff: true, next: ns + 1, last: capS})
 		}
-		m.Staff = append(m.Staff, rest...)
 	}
-	return nil
+	return pend, nil
 }

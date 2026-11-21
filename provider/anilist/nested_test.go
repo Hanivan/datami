@@ -87,7 +87,7 @@ func TestGetByMalID_FollowUpWhenMore(t *testing.T) {
 		if n == 1 {
 			return `{"data":{"Media":{"id":7,"title":{"romaji":"x"},"c1":` + conn(true, cEdge(1)) + `,"c2":` + conn(true, cEdge(2)) + `}}}`
 		}
-		return `{"data":{"Media":{"characters":` + conn(false, cEdge(3)) + `}}}`
+		return `{"data":{"a0":{"characters":` + conn(false, cEdge(3)) + `}}}`
 	})
 	m, err := c.GetByMalID(context.Background(), "1", types.MediaOpts{CharacterPages: 2})
 	if err != nil {
@@ -96,11 +96,8 @@ func TestGetByMalID_FollowUpWhenMore(t *testing.T) {
 	if len(log.queries) != 2 {
 		t.Fatalf("requests=%d", len(log.queries))
 	}
-	if !strings.Contains(log.queries[1], "characters(page: $page") {
-		t.Errorf("follow-up not standalone: %s", log.queries[1])
-	}
-	if log.vars[1]["page"] != float64(3) || log.vars[1]["id"] != float64(7) {
-		t.Errorf("vars=%v", log.vars[1])
+	if !strings.Contains(log.queries[1], "a0: Media(id: 7) { characters(page: 3, perPage: 25, sort: ROLE)") {
+		t.Errorf("follow-up not packed: %s", log.queries[1])
 	}
 	if len(m.Characters) != 3 {
 		t.Fatalf("chars=%d", len(m.Characters))

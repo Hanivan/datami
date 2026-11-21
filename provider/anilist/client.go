@@ -116,7 +116,11 @@ func (c *Client) doGraphQL(ctx context.Context, query string, vars map[string]an
 	}
 	m := result.Data.Media.toMedia()
 	if mo.CharacterPages > 0 || mo.StaffPages > 0 {
-		if err := c.mergeEmbedded(ctx, body, result.Data.Media.ID, mo, m); err != nil {
+		pend, err := mergeEmbedded(body, result.Data.Media.ID, mo, m)
+		if err != nil {
+			return nil, err
+		}
+		if err := c.followUps(ctx, pend, op); err != nil {
 			return nil, err
 		}
 	}
