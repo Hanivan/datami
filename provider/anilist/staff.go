@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
 
@@ -21,7 +22,7 @@ func (c *Client) GetStaffByMalID(ctx context.Context, malID, mediaType string, o
 
 func (c *Client) staffBy(ctx context.Context, idField, id, mediaType string, opts ...types.PageOpts) ([]types.Person, error) {
 	if id == "" {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceAniList, OpGetStaff, types.ErrInvalidInput)
 	}
 	sel := "staff(page: $page, perPage: $perPage, " + staffSort + ") " + staffBody
 	query, vars := mediaPageQuery(idField, id, mediaType, sel)
@@ -63,7 +64,7 @@ func (c *Client) doStaffConn(ctx context.Context, query string, vars map[string]
 		} `json:"Data"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("decode: %w", err)}
+		return nil, helpers.Wrap(types.SourceAniList, op, fmt.Errorf("decode: %w", err))
 	}
 	if result.Data.Media == nil {
 		return nil, nil

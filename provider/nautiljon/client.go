@@ -9,14 +9,11 @@ import (
 	"github.com/Hanivan/datami/types"
 )
 
-const (
-	OpGet        = "get"
-	OpSearch     = "search"
-	OpGetByMalID = "getbymalid"
-)
+// Compile-time check that Client satisfies types.Provider.
+var _ types.Provider = (*Client)(nil)
 
 func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
-	return nil, &types.Error{Source: types.SourceNautiljon, Op: OpGet, Err: types.ErrNotImplemented}
+	return nil, helpers.Wrap(types.SourceNautiljon, OpGet, types.ErrNotImplemented)
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -27,13 +24,13 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	url := fmt.Sprintf("%s/animes/?dbt=%d", c.baseURL, (page-1)*15)
 	code, body, retryAfter, err := c.client.Get(ctx, OpSearch, url)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceNautiljon, Op: OpSearch, Err: err}
+		return nil, helpers.Wrap(types.SourceNautiljon, OpSearch, err)
 	}
 	return handleListResponse(code, body, OpSearch, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
-	return nil, &types.Error{Source: types.SourceNautiljon, Op: OpGetByMalID, Err: types.ErrNotImplemented}
+	return nil, helpers.Wrap(types.SourceNautiljon, OpGetByMalID, types.ErrNotImplemented)
 }
 
 func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Media, error) {
@@ -46,7 +43,7 @@ func handleListResponse(code int, body []byte, op string, retryAfter int) ([]typ
 	}
 	items, err := parseNautiljonList(body)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceNautiljon, Op: op, Err: fmt.Errorf("parse: %w", err)}
+		return nil, helpers.Wrap(types.SourceNautiljon, op, fmt.Errorf("parse: %w", err))
 	}
 	results := make([]types.Media, 0, len(items))
 	for _, item := range items {

@@ -1,10 +1,14 @@
 package helpers
 
 import (
+	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/Hanivan/datami/internal/httpx"
 	"github.com/Hanivan/datami/types"
 )
 
@@ -63,5 +67,35 @@ func TestRetryAfterCarried(t *testing.T) {
 	_, err := DecodeJSON[struct{ A int }](types.SourceMAL, "get", 503, 9, nil)
 	if got := types.RetryAfterOf(err); got != 9 {
 		t.Fatalf("DecodeJSON retryAfter = %d, want 9", got)
+	}
+}
+
+func TestFetchJSONSuccess(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.Write([]byte(`{"a":1}`)) }))
+	defer srv.Close()
+	v, err := FetchJSON[struct{ A int }](context.Background(), httpx.New(httpx.Config{}), types.SourceMAL, "op", srv.URL)
+	if err != nil || v.A != 1 {
+		t.Fatalf("%v %v", v, err)
+	}
+}
+
+func TestFetchJSONStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(404) }))
+	defer srv.Close()
+	_, err := FetchJSON[struct{ A int }](context.Background(), httpx.New(httpx.Config{}), types.SourceMAL, "op", srv.URL)
+	var te *types.Error
+	if !errors.Is(err, types.ErrNotFound) || !errors.As(err, &te) || te.Op != "op" {
+		t.Fatalf("%v", err)
+	}
+}
+
+func TestFetchJSONTransport(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+	url := srv.URL
+	srv.Close()
+	_, err := FetchJSON[struct{ A int }](context.Background(), httpx.New(httpx.Config{}), types.SourceMAL, "op", url)
+	var te *types.Error
+	if !errors.As(err, &te) || te.Source != types.SourceMAL || te.Op != "op" {
+		t.Fatalf("%v", err)
 	}
 }

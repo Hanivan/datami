@@ -20,7 +20,7 @@ Every provider failure is a `*types.Error` (`types/errors.go`) wrapping a sentin
 
 Sentinels: `ErrNotFound`, `ErrRateLimited`, `ErrAuthFailed`, `ErrUnavailable`, `ErrInvalidInput`, `ErrNotImplemented`.
 
-Shared mapper `helpers.StatusError` / `helpers.DecodeJSON` (`internal/helpers/response.go`):
+Shared mapper `helpers.StatusError` / `helpers.DecodeJSON` (`internal/helpers/errors.go`, `response.go`):
 
 | HTTP | Sentinel |
 | --- | --- |

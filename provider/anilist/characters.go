@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
 
@@ -25,7 +26,7 @@ func (c *Client) GetCharactersByMalID(ctx context.Context, malID, mediaType stri
 
 func (c *Client) charactersBy(ctx context.Context, idField, id, mediaType string, opts ...types.PageOpts) ([]types.Character, error) {
 	if id == "" {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceAniList, OpGetCharacters, types.ErrInvalidInput)
 	}
 	sel := "characters(page: $page, perPage: $perPage, " + charSort + ") " + c.charBody()
 	query, vars := mediaPageQuery(idField, id, mediaType, sel)
@@ -67,7 +68,7 @@ func (c *Client) doCharConn(ctx context.Context, query string, vars map[string]a
 		} `json:"Data"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("decode: %w", err)}
+		return nil, helpers.Wrap(types.SourceAniList, op, fmt.Errorf("decode: %w", err))
 	}
 	if result.Data.Media == nil {
 		return nil, nil

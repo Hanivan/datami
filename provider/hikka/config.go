@@ -18,7 +18,7 @@ type Client struct {
 }
 
 func New(cfg Config) (*Client, error) {
-	return newClient("https://api.hikka.io", cfg)
+	return newClient(defaultBaseURL, cfg)
 }
 
 func NewWithTestServer(baseURL string, cfg Config) *Client {
@@ -35,12 +35,8 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 		baseURL: baseURL,
 		client: httpx.New(httpx.Config{
 			Timeout: timeout,
-			Rate:    2,
-			Metrics: func(op string, dur time.Duration, err error) {
-				if cfg.Metrics != nil {
-					cfg.Metrics(types.SourceHikka, op, dur, err)
-				}
-			},
+			Rate:    defaultRate,
+			Metrics: httpx.SourceMetrics(types.SourceHikka, cfg.Metrics),
 		}),
 	}, nil
 }

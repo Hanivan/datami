@@ -19,7 +19,7 @@ type Client struct {
 }
 
 func New(cfg Config) (*Client, error) {
-	return newClient("https://kitsu.io/api/edge", cfg)
+	return newClient(defaultBaseURL, cfg)
 }
 
 func NewWithTestServer(baseURL string, cfg Config) *Client {
@@ -36,12 +36,8 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 		baseURL: baseURL,
 		client: httpx.New(httpx.Config{
 			Timeout: timeout,
-			Rate:    4,
-			Metrics: func(op string, dur time.Duration, err error) {
-				if cfg.Metrics != nil {
-					cfg.Metrics(types.SourceKitsu, op, dur, err)
-				}
-			},
+			Rate:    defaultRate,
+			Metrics: httpx.SourceMetrics(types.SourceKitsu, cfg.Metrics),
 		}),
 		metrics: cfg.Metrics,
 	}, nil

@@ -6,21 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
-
-// followUpAliases caps the aliased connections packed into one request.
-const followUpAliases = 8
-
-// pending is one cast or staff connection with pages left to fetch: next is
-// the page to ask for, last the connection's page cap.
-type pending struct {
-	media   *types.Media
-	mediaID int
-	staff   bool
-	next    int
-	last    int
-}
 
 // followUps fetches the remaining pages of every pending connection in
 // rounds. Each round asks for the next page of every connection still
@@ -73,13 +61,13 @@ func (c *Client) followUpRequest(ctx context.Context, chunk []pending) ([]pendin
 		} `json:"errors"`
 	}
 	if err := json.Unmarshal(body, &resp); err != nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("decode: %w", err)}
+		return nil, helpers.Wrap(types.SourceAniList, op, fmt.Errorf("decode: %w", err))
 	}
 	// AniList answers 200 with "errors" when it rejects part of the query
 	// (complexity, an internal fault); the affected aliases come back null.
 	// Treating that as "no more pages" would silently truncate a roster.
 	if len(resp.Errors) > 0 {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("graphql: %s", resp.Errors[0].Message)}
+		return nil, helpers.Wrap(types.SourceAniList, op, fmt.Errorf("graphql: %s", resp.Errors[0].Message))
 	}
 	var more []pending
 	for i, p := range chunk {

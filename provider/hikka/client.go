@@ -9,14 +9,11 @@ import (
 	"github.com/Hanivan/datami/types"
 )
 
-const (
-	OpGet        = "get"
-	OpSearch     = "search"
-	OpGetByMalID = "getbymalid"
-)
+// Compile-time check that Client satisfies types.Provider.
+var _ types.Provider = (*Client)(nil)
 
 func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
-	return nil, &types.Error{Source: types.SourceHikka, Op: OpGet, Err: types.ErrNotImplemented}
+	return nil, helpers.Wrap(types.SourceHikka, OpGet, types.ErrNotImplemented)
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
@@ -44,18 +41,18 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceHikka, Op: OpSearch, Err: fmt.Errorf("marshal: %w", err)}
+		return nil, helpers.Wrap(types.SourceHikka, OpSearch, fmt.Errorf("marshal: %w", err))
 	}
 	url := fmt.Sprintf("%s/anime?page=%d&size=%d", c.baseURL, page, limit)
 	code, respBody, retryAfter, err := c.client.Post(ctx, OpSearch, url, body, hikkaHeaders())
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceHikka, Op: OpSearch, Err: err}
+		return nil, helpers.Wrap(types.SourceHikka, OpSearch, err)
 	}
 	return handleListResponse(code, respBody, OpSearch, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
-	return nil, &types.Error{Source: types.SourceHikka, Op: OpGetByMalID, Err: types.ErrNotImplemented}
+	return nil, helpers.Wrap(types.SourceHikka, OpGetByMalID, types.ErrNotImplemented)
 }
 
 func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Media, error) {

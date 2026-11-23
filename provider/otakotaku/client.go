@@ -8,33 +8,29 @@ import (
 	"github.com/Hanivan/datami/types"
 )
 
-const (
-	OpGet        = "get"
-	OpSearch     = "search"
-	OpGetByMalID = "getbymalid"
-	OpListAll    = "listall"
-)
+// Compile-time check that Client satisfies types.Provider.
+var _ types.Provider = (*Client)(nil)
 
 func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 	if id == "" {
-		return nil, &types.Error{Source: types.SourceOtakotaku, Op: OpGet, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceOtakotaku, OpGet, types.ErrInvalidInput)
 	}
 	url := fmt.Sprintf("%s/api/anime/view/%s/placeholder", c.baseURL, id)
 	code, body, retryAfter, err := c.client.Get(ctx, OpGet, url)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceOtakotaku, Op: OpGet, Err: err}
+		return nil, helpers.Wrap(types.SourceOtakotaku, OpGet, err)
 	}
 	return handleGetResponse(code, body, OpGet, retryAfter)
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
-	return nil, &types.Error{Source: types.SourceOtakotaku, Op: OpSearch, Err: types.ErrNotImplemented}
+	return nil, helpers.Wrap(types.SourceOtakotaku, OpSearch, types.ErrNotImplemented)
 }
 
 // GetByMalID is not supported: OtakOtaku has no MAL-id lookup, and its own ids
 // are a separate namespace. Use ListAll and match ExternalIDs instead.
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
-	return nil, &types.Error{Source: types.SourceOtakotaku, Op: OpGetByMalID, Err: types.ErrNotImplemented}
+	return nil, helpers.Wrap(types.SourceOtakotaku, OpGetByMalID, types.ErrNotImplemented)
 }
 
 func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Media, error) {
@@ -45,7 +41,7 @@ func (c *Client) ListAll(ctx context.Context, opts types.SearchOpts) ([]types.Me
 	url := fmt.Sprintf("%s/api/anime/view/%d/placeholder", c.baseURL, id)
 	code, body, retryAfter, err := c.client.Get(ctx, OpListAll, url)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceOtakotaku, Op: OpListAll, Err: err}
+		return nil, helpers.Wrap(types.SourceOtakotaku, OpListAll, err)
 	}
 	resp, err := handleGetResponse(code, body, OpListAll, retryAfter)
 	if err != nil {

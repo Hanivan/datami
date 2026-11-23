@@ -10,29 +10,24 @@ import (
 	"github.com/Hanivan/datami/types"
 )
 
-const (
-	OpGet         = "get"
-	OpSearch      = "search"
-	OpGetByMalID  = "getbymalid"
-	OpGetManga    = "getmanga"
-	OpSearchManga = "searchmanga"
-)
+// Compile-time check that Client satisfies types.Provider.
+var _ types.Provider = (*Client)(nil)
 
 func (c *Client) Get(ctx context.Context, id string) (*types.Media, error) {
 	if id == "" {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGet, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceKitsu, OpGet, types.ErrInvalidInput)
 	}
 	u := fmt.Sprintf("%s/anime/%s", c.baseURL, url.PathEscape(id))
-	code, body, retryAfter, err := c.client.Get(ctx, OpGet, u)
+	resp, err := helpers.FetchJSON[mediaResponse](ctx, c.client, types.SourceKitsu, OpGet, u)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGet, Err: err}
+		return nil, err
 	}
-	return handleResponse(code, body, OpGet, retryAfter)
+	return resp.Data.toMedia(), nil
 }
 
 func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
 	if query == "" {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceKitsu, OpSearch, types.ErrInvalidInput)
 	}
 	limit := opts.Limit
 	if limit == 0 {
@@ -41,30 +36,30 @@ func (c *Client) Search(ctx context.Context, query string, opts types.SearchOpts
 	u := fmt.Sprintf("%s/anime?filter[text]=%s&page[limit]=%d", c.baseURL, url.QueryEscape(query), limit)
 	code, body, retryAfter, err := c.client.Get(ctx, OpSearch, u)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearch, Err: err}
+		return nil, helpers.Wrap(types.SourceKitsu, OpSearch, err)
 	}
 	return handleSearchResponse(code, body, retryAfter)
 }
 
 func (c *Client) GetByMalID(ctx context.Context, malID string) (*types.Media, error) {
-	return nil, &types.Error{Source: types.SourceKitsu, Op: OpGetByMalID, Err: types.ErrNotFound}
+	return nil, helpers.Wrap(types.SourceKitsu, OpGetByMalID, types.ErrNotFound)
 }
 
 func (c *Client) GetManga(ctx context.Context, id string) (*types.Media, error) {
 	if id == "" {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGetManga, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceKitsu, OpGetManga, types.ErrInvalidInput)
 	}
 	u := fmt.Sprintf("%s/manga/%s", c.baseURL, url.PathEscape(id))
-	code, body, retryAfter, err := c.client.Get(ctx, OpGetManga, u)
+	resp, err := helpers.FetchJSON[mediaResponse](ctx, c.client, types.SourceKitsu, OpGetManga, u)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpGetManga, Err: err}
+		return nil, err
 	}
-	return handleResponse(code, body, OpGetManga, retryAfter)
+	return resp.Data.toMedia(), nil
 }
 
 func (c *Client) SearchManga(ctx context.Context, query string, opts types.SearchOpts) ([]types.Media, error) {
 	if query == "" {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearchManga, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceKitsu, OpSearchManga, types.ErrInvalidInput)
 	}
 	limit := opts.Limit
 	if limit == 0 {
@@ -73,19 +68,9 @@ func (c *Client) SearchManga(ctx context.Context, query string, opts types.Searc
 	u := fmt.Sprintf("%s/manga?filter[text]=%s&page[limit]=%d", c.baseURL, url.QueryEscape(query), limit)
 	code, body, retryAfter, err := c.client.Get(ctx, OpSearchManga, u)
 	if err != nil {
-		return nil, &types.Error{Source: types.SourceKitsu, Op: OpSearchManga, Err: err}
+		return nil, helpers.Wrap(types.SourceKitsu, OpSearchManga, err)
 	}
 	return handleSearchResponse(code, body, retryAfter)
-}
-
-func handleResponse(code int, body []byte, op string, retryAfter int) (*types.Media, error) {
-	resp, err := helpers.DecodeJSON[struct {
-		Data anime `json:"data"`
-	}](types.SourceKitsu, op, code, retryAfter, body)
-	if err != nil {
-		return nil, err
-	}
-	return resp.Data.toMedia(), nil
 }
 
 func handleSearchResponse(code int, body []byte, retryAfter int) ([]types.Media, error) {

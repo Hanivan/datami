@@ -9,12 +9,6 @@ import (
 	"github.com/Hanivan/datami/types"
 )
 
-const (
-	// defaultAPIURL is plain HTTP: AniDB serves no TLS on port 9001.
-	defaultAPIURL    = "http://api.anidb.net:9001/httpapi"
-	defaultTitlesURL = "https://anidb.net/api/anime-titles.xml.gz"
-)
-
 type Config struct {
 	// ClientName is a registered AniDB HTTP client name. Required.
 	ClientName string
@@ -43,12 +37,12 @@ type Client struct {
 // New returns ErrInvalidInput when ClientName is empty or ClientVersion <= 0.
 func New(cfg Config) (*Client, error) {
 	if cfg.ClientName == "" || cfg.ClientVersion <= 0 {
-		return nil, &types.Error{Source: types.SourceAniDB, Op: OpNew, Err: types.ErrInvalidInput}
+		return nil, wrap(OpNew, types.ErrInvalidInput)
 	}
 	if cfg.CacheDir == "" {
 		dir, err := os.UserCacheDir()
 		if err != nil {
-			return nil, &types.Error{Source: types.SourceAniDB, Op: OpNew, Err: err}
+			return nil, wrap(OpNew, err)
 		}
 		cfg.CacheDir = filepath.Join(dir, "datami", "anidb")
 	}
@@ -91,11 +85,7 @@ func newClient(apiURL, titlesURL string, cfg Config) *Client {
 			MaxRetries: 1,
 			// The gzipped titles dump is ~10 MiB; leave headroom over the default.
 			MaxBody: 64 << 20,
-			Metrics: func(op string, dur time.Duration, err error) {
-				if cfg.Metrics != nil {
-					cfg.Metrics(types.SourceAniDB, op, dur, err)
-				}
-			},
+			Metrics: httpx.SourceMetrics(types.SourceAniDB, cfg.Metrics),
 		}),
 	}
 }

@@ -1,7 +1,6 @@
 package nautiljon
 
 import (
-	"net/http"
 	"time"
 
 	"github.com/Hanivan/datami/internal/httpx"
@@ -19,7 +18,7 @@ type Client struct {
 }
 
 func New(cfg Config) (*Client, error) {
-	return newClient("https://www.nautiljon.com", cfg)
+	return newClient(defaultBaseURL, cfg)
 }
 
 func NewWithTestServer(baseURL string, cfg Config) *Client {
@@ -36,22 +35,9 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 		baseURL: baseURL,
 		client: httpx.New(httpx.Config{
 			Timeout:   timeout,
-			Rate:      1,
+			Rate:      defaultRate,
 			Transport: &rewriteTransport{base: baseURL},
-			Metrics: func(op string, dur time.Duration, err error) {
-				if cfg.Metrics != nil {
-					cfg.Metrics(types.SourceNautiljon, op, dur, err)
-				}
-			},
+			Metrics:   httpx.SourceMetrics(types.SourceNautiljon, cfg.Metrics),
 		}),
 	}, nil
-}
-
-type rewriteTransport struct {
-	base string
-}
-
-func (t *rewriteTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	// no-op; real impl would use cloudscraper. kept for parity.
-	return http.DefaultTransport.RoundTrip(req)
 }

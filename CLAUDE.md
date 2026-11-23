@@ -23,15 +23,18 @@ go vet ./...
 **`types/`** - shared domain model. `Media` is the canonical response shape every source maps to. Sentinel errors (`ErrNotFound`, `ErrRateLimited`, `ErrAuthFailed`, `ErrUnavailable`, `ErrInvalidInput`) are defined here. `Error` wraps them with `Source` + `Op` for provenance and supports `Unwrap()` for `errors.Is`.
 
 **Source packages (`provider/anilist/`, `provider/mal/`, `provider/anidb/`, `provider/kitsu/`, `provider/hikka/`, `provider/kaize/`, `provider/nautiljon/`, `provider/otakotaku/`)** - each follows an identical structure:
-- `constants.go` - status/format normalization maps, when the provider has any (use `types.Source*` directly, no local `sourceName` const)
+- `constants.go` - `Op*` consts, default base URL/rate, limits, sentinel vars, and status/format normalization maps (use `types.Source*` directly, no local `sourceName` const)
 - `config.go` - source-specific `Config` + `New()` constructor
 - `client.go` - `Get`, `Search`, `GetByMalID` methods
-- `models.go` - raw API response structs
-- `mapping.go` - `toMedia()` converts raw → `types.Media`
+- `models.go` - all types: raw API response structs and unexported helper types (larger providers split into `models_*.go` by concern)
+- `mapping.go` - `toMedia()` converts raw → `types.Media` (cast mapping in `mapping_cast.go` where present)
+- Logic files hold funcs only; larger providers split by concern (e.g. MAL `manga.go`, `ranking.go`, `stubs.go`, `response.go`; AniList `graphql.go`, `selections.go`; AniDB `fetch.go`, `titles_cache.go`, `titles_parse.go`). Every provider except AniList asserts `var _ types.Provider = (*Client)(nil)`.
 
-**`internal/httpx/`** - shared HTTP client with timeout, rate limiting, and a metrics callback. Sources inject the source name into the callback; `op` is the provider `Op*` const passed to `Get(ctx, op, url)`/`Post`/`Do(op, req)`, which also return Retry-After seconds. Accepts a `Transport http.RoundTripper` in `Config` for providers that need custom bot-handling (cloudscraper, CSRF, custom headers). Caps response bodies at `Config.MaxBody` (default `DefaultMaxBody` 32 MiB; over returns `ErrBodyTooLarge`, not retried). Exports shared consts: `DefaultTimeout`, `MaxRetries`, `RetryBackoff`, `DefaultSearchLimit`, `ServerErrThreshold`, `ContentTypeJSON`, `HeaderContentType`, `HeaderAccept`, `HeaderAuthorization`, `BearerPrefix`.
+**`internal/httpx/`** - shared HTTP client with timeout, rate limiting, and a metrics callback. Sources inject the source name into the callback; `op` is the provider `Op*` const passed to `Get(ctx, op, url)`/`Post`/`Do(op, req)`, which also return Retry-After seconds. Accepts a `Transport http.RoundTripper` in `Config` for providers that need custom bot-handling (cloudscraper, CSRF, custom headers). Caps response bodies at `Config.MaxBody` (default `DefaultMaxBody` 32 MiB; over returns `ErrBodyTooLarge`, not retried). `SourceMetrics(source, fn)` adapts a source-aware metrics callback (use in every provider `config.go`). Exports shared consts: `DefaultTimeout`, `MaxRetries`, `RetryBackoff`, `DefaultSearchLimit`, `ServerErrThreshold`, `ContentTypeJSON`, `HeaderContentType`, `HeaderAccept`, `HeaderAuthorization`, `BearerPrefix`.
 
-**`internal/helpers/`** - shared mapping helpers. Use these instead of redefining per-provider: `ParseDate`, `RawPayload`, `NormalizeRelation`, `DerefString`, `DerefInt`, `TextContent`, `HasClass`, `TdNodes`.
+**`internal/helpers/`** - shared mapping helpers. Use these instead of redefining per-provider: `ParseDate`, `RawPayload`, `NormalizeRelation`, `DerefString`, `DerefInt`, `TextContent`, `HasClass`, `TdNodes`. Errors (`errors.go`): `Wrap(source, op, err)` for plain `types.Error`, `StatusError`. Responses (`response.go`): `DecodeJSON[T]`, `FetchJSON[T]` (GET + Wrap + DecodeJSON).
+
+**`types/provider.go`** - `Provider` interface (`Get`, `Search`, `GetByMalID`).
 
 **`types/enums.go`** - typed enums. Use these instead of raw strings: `MediaStatus` (`StatusFinished`, `StatusOngoing`, etc.), `MediaType` (`TypeTV`, `TypeManga`, etc.), `TitleKind` (`KindCanonical`, `KindRomaji`, etc.), `Season` (`SeasonWinter`, etc.), `RelationKind` (`RelationSequel`, etc.), `ImageSize` (`SizeMedium`, `SizeLarge`, `SizeOriginal`), `ResourceType` (`ResourceAnime`, `ResourceManga`), `CharacterRoleType` (`RoleMain`, `RoleSupporting`).
 

@@ -37,6 +37,10 @@ type posterImage struct {
 	Original string `json:"original"`
 }
 
+type mediaResponse struct {
+	Data anime `json:"data"`
+}
+
 type searchResponse struct {
 	Data []anime `json:"data"`
 }

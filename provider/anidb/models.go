@@ -1,6 +1,10 @@
 package anidb
 
-import "encoding/xml"
+import (
+	"encoding/xml"
+	"io"
+	"time"
+)
 
 // XML structures adapted from go-anidb (MIT, see NOTICE).
 type anime struct {
@@ -94,4 +98,34 @@ type seiyuu struct {
 	ID      int    `xml:"id,attr"`
 	Picture string `xml:"picture,attr"`
 	Name    string `xml:",chardata"`
+}
+
+// titlesDump is the anime-titles.xml layout (format per go-anidb, see NOTICE).
+type titlesDump struct {
+	Anime []struct {
+		AID    int          `xml:"aid,attr"`
+		Titles []titleEntry `xml:"title"`
+	} `xml:"anime"`
+}
+
+type titleRecord struct {
+	aid   int
+	raw   titles
+	norms []string
+}
+
+// titlesState is the in-memory index plus refresh bookkeeping. sem is a
+// 1-slot lock guarding the rest; it is held across the download so concurrent
+// Searches share one request, and waiters can give up via ctx.
+type titlesState struct {
+	sem         chan struct{}
+	index       []titleRecord // sorted by aid
+	loadedAt    time.Time
+	lastAttempt time.Time
+	lastErr     error
+}
+
+type countReader struct {
+	r io.Reader
+	n int64
 }

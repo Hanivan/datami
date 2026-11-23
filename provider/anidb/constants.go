@@ -2,8 +2,32 @@ package anidb
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Hanivan/datami/types"
+)
+
+const (
+	OpNew             = "new"
+	OpGet             = "get"
+	OpSearch          = "search"
+	OpGetByMalID      = "getbymalid"
+	OpGetManga        = "getmanga"
+	OpSearchManga     = "searchmanga"
+	OpGetMangaByMalID = "getmangabymalid"
+	OpGetCharacters   = "getcharacters"
+)
+
+const (
+	// defaultAPIURL is plain HTTP: AniDB serves no TLS on port 9001.
+	defaultAPIURL    = "http://api.anidb.net:9001/httpapi"
+	defaultTitlesURL = "https://anidb.net/api/anime-titles.xml.gz"
+)
+
+const (
+	titlesMaxAge        = 24 * time.Hour
+	titlesRetryCooldown = time.Hour
+	titlesFile          = "anime-titles.xml.gz"
 )
 
 const (

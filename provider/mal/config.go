@@ -47,11 +47,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 			Limiter:   cfg.Limiter,
 			Rate:      2,
 			Headers:   map[string]string{"X-MAL-CLIENT-ID": cfg.ClientID},
-			Metrics: func(op string, dur time.Duration, err error) {
-				if cfg.Metrics != nil {
-					cfg.Metrics(types.SourceMAL, op, dur, err)
-				}
-			},
+			Metrics:   httpx.SourceMetrics(types.SourceMAL, cfg.Metrics),
 		}),
 		metrics: cfg.Metrics,
 	}, nil

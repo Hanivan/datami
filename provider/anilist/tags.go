@@ -3,26 +3,11 @@ package anilist
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
-
-// Aliases keep the anilist.* names; the types live in types/tag.go.
-type (
-	TagsLinks    = types.TagsLinks
-	Tag          = types.Tag
-	ExternalLink = types.ExternalLink
-)
-
-// ErrMediaNotFound is returned by the tags/links fetches when AniList answers
-// a resolved, error-free {"data":{"Media":null}} - the id did not resolve to a
-// Media at all. Deliberately distinct from a nil error with empty slices,
-// which means the Media DID resolve and genuinely has none: a caller doing a
-// delete-then-insert refresh must tell the two apart, since "didn't resolve
-// this time" is not grounds to conclude the prior set is stale.
-var ErrMediaNotFound = errors.New("anilist: media not found")
 
 // GetTagsAndLinks returns a media's tags and external links by AniList id.
 func (c *Client) GetTagsAndLinks(ctx context.Context, id string) (*TagsLinks, error) {
@@ -37,7 +22,7 @@ func (c *Client) GetTagsAndLinksByMalID(ctx context.Context, malID, mediaType st
 
 func (c *Client) tagsLinksBy(ctx context.Context, idField, id, mediaType string) (*TagsLinks, error) {
 	if id == "" {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: types.ErrInvalidInput}
+		return nil, helpers.Wrap(types.SourceAniList, OpGetTagsLinks, types.ErrInvalidInput)
 	}
 	sel := `tags { name category rank isGeneralSpoiler isMediaSpoiler isAdult } externalLinks { id url site siteId type language notes isDisabled }`
 	vars := map[string]any{idField: parseID(id)}
@@ -62,10 +47,10 @@ func (c *Client) tagsLinksBy(ctx context.Context, idField, id, mediaType string)
 		} `json:"Data"`
 	}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: fmt.Errorf("decode: %w", err)}
+		return nil, helpers.Wrap(types.SourceAniList, OpGetTagsLinks, fmt.Errorf("decode: %w", err))
 	}
 	if result.Data.Media == nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: OpGetTagsLinks, Err: ErrMediaNotFound}
+		return nil, helpers.Wrap(types.SourceAniList, OpGetTagsLinks, ErrMediaNotFound)
 	}
 	tl := &TagsLinks{}
 	for _, t := range result.Data.Media.Tags {

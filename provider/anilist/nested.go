@@ -6,29 +6,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
-
-const (
-	// maxPages is the default total page cap per connection (embedded +
-	// follow-up), and the fixed cap of the standalone GetCharacters/GetStaff walk.
-	maxPages = 10
-	// pageSize is AniList's per-page ceiling; never send more.
-	pageSize = 25
-
-	charSort  = "sort: ROLE"
-	staffSort = "sort: RELEVANCE"
-
-	// staffBody is the selection inside a staff connection, shared by the
-	// standalone and embedded queries.
-	staffBody = `{ pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } primaryOccupations } } }`
-)
-
-// charBody is the selection inside a characters connection, shared by the
-// standalone and embedded queries.
-func (c *Client) charBody() string {
-	return `{ pageInfo { hasNextPage } edges { role node { id name { first middle last full native alternative } image { medium large } ` + c.desc() + ` } voiceActors { id name { first middle last full native alternative } image { medium large } languageV2 } } }`
-}
 
 // resolvePages applies PageOpts defaults and the global page cap.
 func resolvePages(opts []types.PageOpts) (start, max int) {
@@ -84,7 +64,7 @@ func mergeEmbedded(body []byte, mediaID int, o types.MediaOpts, m *types.Media, 
 		} `json:"data"`
 	}
 	if err := json.Unmarshal(body, &raw); err != nil {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: fmt.Errorf("decode: %w", err)}
+		return nil, helpers.Wrap(types.SourceAniList, op, fmt.Errorf("decode: %w", err))
 	}
 	return mergeEmbeddedMap(raw.Data.Media, mediaID, o, m)
 }
@@ -99,7 +79,7 @@ func mergeEmbeddedMap(media map[string]json.RawMessage, mediaID int, o types.Med
 		var conn charConn
 		if r, ok := media["c"+strconv.Itoa(i)]; ok && string(r) != "null" {
 			if err := json.Unmarshal(r, &conn); err != nil {
-				return nil, &types.Error{Source: types.SourceAniList, Op: OpGetCharacters, Err: fmt.Errorf("decode: %w", err)}
+				return nil, helpers.Wrap(types.SourceAniList, OpGetCharacters, fmt.Errorf("decode: %w", err))
 			}
 		}
 		for _, e := range conn.Edges {
@@ -117,7 +97,7 @@ func mergeEmbeddedMap(media map[string]json.RawMessage, mediaID int, o types.Med
 		var conn staffConn
 		if r, ok := media["s"+strconv.Itoa(i)]; ok && string(r) != "null" {
 			if err := json.Unmarshal(r, &conn); err != nil {
-				return nil, &types.Error{Source: types.SourceAniList, Op: OpGetStaff, Err: fmt.Errorf("decode: %w", err)}
+				return nil, helpers.Wrap(types.SourceAniList, OpGetStaff, fmt.Errorf("decode: %w", err))
 			}
 		}
 		for _, e := range conn.Edges {

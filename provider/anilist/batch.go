@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Hanivan/datami/internal/helpers"
 	"github.com/Hanivan/datami/types"
 )
-
-// maxBatch is AniList's perPage ceiling.
-const maxBatch = 50
 
 // GetByMalIDs fetches the ANIME whose MAL ids are malIDs in one request (plus
 // packed follow-ups for works with more cast/staff than the embedded pages hold). The
@@ -31,7 +29,7 @@ func (c *Client) getByMalIDs(ctx context.Context, malIDs []string, typ, sel, op 
 		return out, nil
 	}
 	fail := func(err error) (map[string]*types.Media, error) {
-		return nil, &types.Error{Source: types.SourceAniList, Op: op, Err: err}
+		return nil, helpers.Wrap(types.SourceAniList, op, err)
 	}
 	if len(malIDs) > maxBatch {
 		return fail(types.ErrInvalidInput)

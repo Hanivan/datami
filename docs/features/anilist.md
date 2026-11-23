@@ -21,7 +21,7 @@
 
 Stubs returning `ErrNotImplemented`: `GetViewer`, `GetMediaListEntry`, `GetMediaListCollection`, `SaveMediaListEntry`, `DeleteMediaListEntry`.
 
-Status mapping (`statusErr` in `client.go`, not `helpers.StatusError`):
+Status mapping (`statusErr` in `graphql.go`, not `helpers.StatusError`):
 
 | HTTP | Error |
 |------|-------|

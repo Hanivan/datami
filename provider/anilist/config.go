@@ -51,11 +51,7 @@ func newClient(baseURL string, cfg Config) (*Client, error) {
 			UserAgent: cfg.UserAgent,
 			Limiter:   cfg.Limiter,
 			Rate:      1.5,
-			Metrics: func(op string, dur time.Duration, err error) {
-				if cfg.Metrics != nil {
-					cfg.Metrics(types.SourceAniList, op, dur, err)
-				}
-			},
+			Metrics:   httpx.SourceMetrics(types.SourceAniList, cfg.Metrics),
 		}),
 		token:   cfg.Token,
 		asHTML:  cfg.DescriptionAsHTML,
