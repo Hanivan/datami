@@ -16,5 +16,6 @@ One file per feature. Each covers **what** it does, **how** it works, **config**
 | [Kaize](kaize.md) | Search and list, HTML scrape |
 | [Nautiljon](nautiljon.md) | Search and list, HTML scrape |
 | [OtakOtaku](otakotaku.md) | Get and list, JSON |
+| [Releasing](releasing.md) | Versioning, alpha/beta/rc stages, tagging, release notes |
 
 Install and commands: [project README](../../README.md).

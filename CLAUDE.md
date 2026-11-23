@@ -59,6 +59,10 @@ Do NOT commit without telling the user first. Exception: if the user invokes `/c
 - HTML-based providers (`kaize`, `nautiljon`) parse responses with `golang.org/x/net/html`.
 - HTTP status mapping: `helpers.StatusError` / `helpers.DecodeJSON[T]`. 401 is `ErrAuthFailed`; 403 is `ErrAuthFailed` for keyed sources but `ErrRateLimited` for keyless ones (hikka, kaize, nautiljon, otakotaku), where 403 means a bot/WAF block. AniList (403 = rate limit) and AniDB (body errors, 503) keep their own mappers.
 
+## Releases
+
+Tags `vX.Y.Z[-alpha|beta|rc.N]`; full rules in `docs/features/releasing.md`. Core `X.Y.Z` = semver bump from commit types since the last stable tag (breaking `type!:`/`BREAKING CHANGE:` major, minor while `v0`; any `feat` minor; else patch; nothing new, no release). Stages only move forward: alpha -> beta -> rc -> stable, `N` resets per stage. Get the tag with `scripts/next-version.sh alpha|beta|rc|stable`, state it and the deciding commit, then `git tag -a <tag> -m <tag> && git push origin <tag>`. Never reuse, move or delete a pushed tag. Pushing a tag runs `.github/workflows/release.yml` (fmt, vet, test, GitHub release; suffixed tags are pre-releases). Commit subjects become the notes: `feat|fix|refactor|docs|chore(scope)[!]: title`.
+
 ## Quality
 
 ```bash

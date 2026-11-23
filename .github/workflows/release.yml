@@ -1,0 +1,49 @@
+name: Release
+
+# Pushing a v* tag runs the checks, then publishes the GitHub release.
+# Tags with a suffix (v0.2.0-alpha.1, -beta.N, -rc.N) publish as pre-releases.
+# Skips when the release exists (re-run). Rules: docs/features/releasing.md.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: '[ -z "$(gofmt -l .)" ] || { gofmt -l .; echo "::error::unformatted files"; exit 1; }'
+      - run: go vet ./...
+      - run: go test ./...
+
+  release:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Publish release
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then echo "release $TAG exists, skipping"; exit 0; fi
+          scripts/release-notes.sh "$TAG" > notes.md
+          pre=(); [[ $TAG == *-* ]] && pre=(--prerelease --latest=false)
+          gh release create "$TAG" --title "$TAG" --notes-file notes.md --verify-tag "${pre[@]}"
